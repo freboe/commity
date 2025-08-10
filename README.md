@@ -2,7 +2,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/commity.svg)](https://pypi.org/project/commity)
 [![Python versions](https://img.shields.io/pypi/pyversions/commity.svg)](https://pypi.org/project/commity)
-[![License](https://img.shields.io/pypi/l/commity.svg)](https://github.com/freboe/commity/blob/main/LICENSE)
+[![License](https://img.shields.io/pypi/l/commity.svg?cacheSeconds=0)](https://github.com/freboe/commity/blob/main/LICENSE)
 
 [![English](https://img.shields.io/badge/Language-English-blue.svg)](https://github.com/freboe/commity/blob/main/README.md) | [![简体中文](https://img.shields.io/badge/Language-简体中文-blue.svg)](https://github.com/freboe/commity/blob/main/README.zh.md)
 
