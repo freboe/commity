@@ -1,17 +1,19 @@
 # 🤖 commity
 
-[English](README.md) | [简体中文](README.zh.md)
+[English](https://github.com/freboe/commity/blob/main/README.md) | 简体中文
 
 使用 AI 生成智能 Git 提交信息。支持 Conventional Commits 格式、emoji 插入，并可选用 OpenAI、Ollama、Gemini 等多种大语言模型。
 
 ## 🔧 安装
 
 使用 `pip` 安装:
+
 ```bash
 pip install commity
 ```
 
 或者使用 `uv` 安装:
+
 ```bash
 uv tool install commity
 ```

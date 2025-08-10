@@ -1,17 +1,19 @@
 # 🤖 commity
 
-[English](README.md) | [简体中文](README.zh.md)
+English | [简体中文](https://github.com/freboe/commity/blob/main/README.zh.md)
 
 Generate intelligent Git commit messages with AI. Supports Conventional Commits, emoji, and multiple LLM providers like OpenAI, Ollama, and Gemini.
 
 ## 🔧 Installation
 
 Install with `pip`:
+
 ```bash
 pip install commity
 ```
 
 Or install with `uv`:
+
 ```bash
 uv tool install commity
 ```
