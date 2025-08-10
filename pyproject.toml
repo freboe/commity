@@ -1,0 +1,32 @@
+[project]
+name = "commity"
+version = "0.1.2"
+description = "AI-powered Git commit message generator supporting OpenAI, Ollama, Gemini"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "requests>=2.32.4",
+    "tiktoken>=0.11.0",
+    "rich>=13.7.1",
+]
+
+[dependency-groups]
+dev = [
+    "hatch>=1.14.1",
+    "twine>=6.1.0",
+]
+
+[project.scripts]
+commity = "commity.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = [
+    "BUILD_README.md",
+    "_ignore*",
+    "logs/",
+    "*.log",
+]

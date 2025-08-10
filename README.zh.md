@@ -1,22 +1,20 @@
 # 🤖 commity
 
-An intelligent Git commit message generation tool using Large Language Models (LLMs), with support for Conventional
-Commits format and emoji insertion.
+使用大语言模型（LLM）生成智能 Git 提交信息的工具，支持 Conventional Commits 格式和 emoji 插入。
 
-## 🔧 Installation
+## 🔧 安装
 
 ```bash
 pip install commity
 ```
 
-## ⚙️ Configuration
+## ⚙️ 配置
 
-`commity` supports three configuration methods, with the following priority: **Command-line Arguments > Environment
-Variables > Configuration File**.
+`commity` 支持通过三种方式进行配置，优先级从高到低依次为：**命令行参数 > 环境变量 > 配置文件**。
 
-Supported model providers are: `Gemini` (default), `Ollama`.
+支持的模型提供商有：`Gemini` (默认)、`Ollama`。
 
-### ✨ Method 1: Specify Model Parameters via Command-line
+### ✨ 方法一：运行命令时指定模型参数
 
 #### Ollama
 
@@ -38,12 +36,12 @@ commity \
 --model gemini-2.5-flash \
 --base_url https://generativelanguage.googleapis.com \
 --api_key <your-api-key> \
---timeout 30 \
+--timeout 30
 ```
 
-### 🌱 Method 2: Set Environment Variables as Defaults
+### 🌱 方法二：设置环境变量作为默认值
 
-You can add the following to your `.bashrc`, `.zshrc`, or `.env` file:
+你可以在 `.bashrc`、`.zshrc` 或 `.env` 文件中添加：
 
 #### Ollama
 
@@ -63,19 +61,19 @@ export COMMITY_API_KEY=your-api-key
 export COMMITY_TEMPERATURE=0.5
 ```
 
-### 📝 Method 3: Use a Configuration File (Recommended)
+### 📝 方法三：使用配置文件（推荐）
 
-For easier configuration management, you can create a `~/.commity/config.json` file in your user's home directory.
+为了更方便地管理配置，你可以在用户主目录下创建 `~/.commity/config.json` 文件。
 
-1. Create the directory:
+1. 创建目录：
    ```bash
    mkdir -p ~/.commity
    ```
-2. Create and edit the `config.json` file:
+2. 创建并编辑 `config.json` 文件：
    ```bash
    touch ~/.commity/config.json
    ```
-3. Add your configuration to `config.json`, for example:
+3. 在 `config.json` 中添加你的配置，例如：
 
    ```json
    {
@@ -84,7 +82,7 @@ For easier configuration management, you can create a `~/.commity/config.json` f
      "BASE_URL": "http://localhost:11434"
    }
    ```
-   Or using Gemini:
+   或者使用 Gemini：
    ```json
    {
      "PROVIDER": "gemini",
@@ -94,17 +92,16 @@ For easier configuration management, you can create a `~/.commity/config.json` f
    }
    ```
 
-## 🚀 Usage
+## 🚀 使用
 
 ```Bash
-# Run
 commity
 
-# View help
+# 查看帮助
 commity --help
 
-# Use Chinese
+# 使用中文
 commity --lang zh
 
-# Include emojis
+# 包含 emoji
 commity --emoji
