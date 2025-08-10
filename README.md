@@ -2,8 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh.md)
 
-An intelligent Git commit message generation tool using Large Language Models (LLMs), with support for Conventional
-Commits format and emoji insertion.
+Generate intelligent Git commit messages with AI. Supports Conventional Commits, emoji, and multiple LLM providers like OpenAI, Ollama, and Gemini.
 
 ## 🔧 Installation
 

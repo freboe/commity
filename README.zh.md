@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh.md)
 
-使用大语言模型（LLM）生成智能 Git 提交信息的工具，支持 Conventional Commits 格式和 emoji 插入。
+使用 AI 生成智能 Git 提交信息。支持 Conventional Commits 格式、emoji 插入，并可选用 OpenAI、Ollama、Gemini 等多种大语言模型。
 
 ## 🔧 安装
 
