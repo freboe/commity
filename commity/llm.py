@@ -17,6 +17,9 @@ class BaseLLMClient(ABC):
         raise NotImplementedError
 
 class OllamaClient(BaseLLMClient):
+    default_base_url = "http://localhost:11434"
+    default_model = "llama3"
+
     def generate(self, prompt: str) -> Optional[str]:
         headers = {"Content-Type": "application/json"}
         payload = {
@@ -49,6 +52,9 @@ class OllamaClient(BaseLLMClient):
             return None
 
 class GeminiClient(BaseLLMClient):
+    default_base_url = "https://generativelanguage.googleapis.com"
+    default_model = "gemini-2.5-flash"
+
     def generate(self, prompt: str) -> Optional[str]:
         headers = {"Content-Type": "application/json"}
         payload = {
@@ -78,10 +84,52 @@ class GeminiClient(BaseLLMClient):
             print(f"[LLM Error] {e}")
             return None
 
+class OpenAIClient(BaseLLMClient):
+    default_base_url = "https://api.openai.com/v1"
+    default_model = "gpt-3.5-turbo"
+
+    def generate(self, prompt: str) -> Optional[str]:
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.config.api_key}",
+        }
+        payload = {
+            "model": self.config.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": self.config.temperature,
+            "max_tokens": self.config.max_tokens,
+        }
+        url = f"{self.config.base_url}/chat/completions"
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=self.config.timeout,
+                proxies=self._get_proxies(),
+            )
+            if response.status_code != 200:
+                print(f"[LLM Error] {response.status_code} - {response.text}")
+                return None
+            response.raise_for_status()
+            json_response = response.json()
+            result = json_response["choices"][0]["message"]["content"]
+            return result
+        except Exception as e:
+            print(f"[LLM Error] {e}")
+            return None
+
+LLM_CLIENTS = {
+    "gemini": GeminiClient,
+    "ollama": OllamaClient,
+    "openai": OpenAIClient,
+}
+
+
 def llm_client_factory(config) -> BaseLLMClient:
-    if config.provider == "gemini":
-        return GeminiClient(config)
-    elif config.provider == "ollama":
-        return OllamaClient(config)
+    provider = config.provider
+    if provider in LLM_CLIENTS:
+        client_class = LLM_CLIENTS[provider]
+        return client_class(config)
     else:
-        raise NotImplementedError(f"Provider {config.provider} is not supported.")
+        raise NotImplementedError(f"Provider {provider} is not supported.")

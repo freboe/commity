@@ -14,9 +14,15 @@ pip install commity
 
 `commity` 支持通过三种方式进行配置，优先级从高到低依次为：**命令行参数 > 环境变量 > 配置文件**。
 
-支持的模型提供商有：`Gemini` (默认)、`Ollama`。
+支持的模型提供商有：`Gemini` (默认)、`Ollama`、`OpenAI`。
 
 ### ✨ 方法一：运行命令时指定模型参数
+
+#### OpenAI
+
+```Bash
+commity --provider openai --model gpt-3.5-turbo --api_key <your-api-key>
+```
 
 #### Ollama
 
@@ -44,6 +50,14 @@ commity \
 ### 🌱 方法二：设置环境变量作为默认值
 
 你可以在 `.bashrc`、`.zshrc` 或 `.env` 文件中添加：
+
+#### OpenAI
+
+```Bash
+export COMMITY_PROVIDER=openai
+export COMMITY_MODEL=gpt-3.5-turbo
+export COMMITY_API_KEY=your-api-key
+```
 
 #### Ollama
 
@@ -88,9 +102,17 @@ export COMMITY_TEMPERATURE=0.5
    ```json
    {
      "PROVIDER": "gemini",
-     "MODEL": "gemini-2.5-flash",
+     "MODEL": "gemini-1.5-flash",
      "BASE_URL": "https://generativelanguage.googleapis.com",
      "API_KEY": "your-gemini-api-key"
+   }
+   ```
+   或者使用 OpenAI：
+   ```json
+   {
+     "PROVIDER": "openai",
+     "MODEL": "gpt-3.5-turbo",
+     "API_KEY": "your-openai-api-key"
    }
    ```
 

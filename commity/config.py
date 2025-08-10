@@ -2,6 +2,7 @@ import os
 import json
 from dataclasses import dataclass
 from typing import Optional
+from commity.llm import LLM_CLIENTS
 
 def load_config_from_file():
     config_path = os.path.expanduser("~/.commity/config.json")
@@ -42,8 +43,13 @@ def get_llm_config(args) -> LLMConfig:
     file_config = load_config_from_file()
     
     provider = _resolve_config("provider", args, file_config, "gemini")
-    base_url = _resolve_config("base_url", args, file_config, "https://generativelanguage.googleapis.com")
-    model = _resolve_config("model", args, file_config, "gemini-2.5-flash")
+
+    client_class = LLM_CLIENTS.get(provider, LLM_CLIENTS["gemini"])
+    default_base_url = client_class.default_base_url
+    default_model = client_class.default_model
+
+    base_url = _resolve_config("base_url", args, file_config, default_base_url)
+    model = _resolve_config("model", args, file_config, default_model)
     api_key = _resolve_config("api_key", args, file_config, None)
     temperature = _resolve_config("temperature", args, file_config, 0.3, float)
     max_tokens = _resolve_config("max_tokens", args, file_config, 1500, int)

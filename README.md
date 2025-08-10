@@ -16,9 +16,15 @@ pip install commity
 `commity` supports three configuration methods, with the following priority: **Command-line Arguments > Environment
 Variables > Configuration File**.
 
-Supported model providers are: `Gemini` (default), `Ollama`.
+Supported model providers are: `Gemini` (default), `Ollama`, `OpenAI`.
 
 ### ✨ Method 1: Specify Model Parameters via Command-line
+
+#### OpenAI
+
+```Bash
+commity --provider openai --model gpt-3.5-turbo --api_key <your-api-key>
+```
 
 #### Ollama
 
@@ -46,6 +52,14 @@ commity \
 ### 🌱 Method 2: Set Environment Variables as Defaults
 
 You can add the following to your `.bashrc`, `.zshrc`, or `.env` file:
+
+#### OpenAI
+
+```Bash
+export COMMITY_PROVIDER=openai
+export COMMITY_MODEL=gpt-3.5-turbo
+export COMMITY_API_KEY=your-api-key
+```
 
 #### Ollama
 
@@ -90,9 +104,17 @@ For easier configuration management, you can create a `~/.commity/config.json` f
    ```json
    {
      "PROVIDER": "gemini",
-     "MODEL": "gemini-2.5-flash",
+     "MODEL": "gemini-1.5-flash",
      "BASE_URL": "https://generativelanguage.googleapis.com",
      "API_KEY": "your-gemini-api-key"
+   }
+   ```
+   Or using OpenAI:
+   ```json
+   {
+     "PROVIDER": "openai",
+     "MODEL": "gpt-3.5-turbo",
+     "API_KEY": "your-openai-api-key"
    }
    ```
 
