@@ -4,6 +4,11 @@ version = "0.1.2"
 description = "AI-powered Git commit message generator supporting OpenAI, Ollama, Gemini"
 readme = "README.md"
 requires-python = ">=3.12"
+authors = [
+    { name = "freboe" },
+    { name = "skyci" }
+]
+urls = { "Homepage" = "https://github.com/freboe/commity", "Repository" = "https://github.com/freboe/commity" }
 dependencies = [
     "requests>=2.32.4",
     "tiktoken>=0.11.0",

@@ -27,9 +27,16 @@ def main():
     parser.add_argument("--proxy", type=str, help="Proxy URL")
     parser.add_argument("--emoji", action="store_true", help="Include emojis")
     parser.add_argument("--type", type=str, default="conventional", help="Commit style type")
+    parser.add_argument("--show-config", action="store_true", help="Show current configuration")
 
     args = parser.parse_args()
     config = get_llm_config(args)
+
+    if args.show_config:
+        config_dict = {k: v for k, v in config.__dict__.items() if v is not None}
+        print(Panel(str(config_dict), title="[bold blue]✅ Current Configuration[/bold blue]", border_style="blue"))
+        return
+
     client = llm_client_factory(config)
 
     diff = get_git_diff()
