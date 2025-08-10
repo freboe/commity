@@ -1,5 +1,7 @@
 # 🤖 commity
 
+[简体中文](README.zh.md) | [English](README.md)
+
 An intelligent Git commit message generation tool using Large Language Models (LLMs), with support for Conventional
 Commits format and emoji insertion.
 
