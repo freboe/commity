@@ -1,14 +1,20 @@
 # 🤖 commity
 
-[简体中文](README.zh.md) | [English](README.md)
+[English](README.md) | [简体中文](README.zh.md)
 
 An intelligent Git commit message generation tool using Large Language Models (LLMs), with support for Conventional
 Commits format and emoji insertion.
 
 ## 🔧 Installation
 
+Install with `pip`:
 ```bash
 pip install commity
+```
+
+Or install with `uv`:
+```bash
+uv tool install commity
 ```
 
 ## ⚙️ Configuration
@@ -84,13 +90,17 @@ export COMMITY_TEMPERATURE=0.5
 For easier configuration management, you can create a `~/.commity/config.json` file in your user's home directory.
 
 1. Create the directory:
+
    ```bash
    mkdir -p ~/.commity
    ```
+
 2. Create and edit the `config.json` file:
+
    ```bash
    touch ~/.commity/config.json
    ```
+
 3. Add your configuration to `config.json`, for example:
 
    ```json
@@ -100,7 +110,9 @@ For easier configuration management, you can create a `~/.commity/config.json` f
      "BASE_URL": "http://localhost:11434"
    }
    ```
+
    Or using Gemini:
+
    ```json
    {
      "PROVIDER": "gemini",
@@ -109,7 +121,9 @@ For easier configuration management, you can create a `~/.commity/config.json` f
      "API_KEY": "your-gemini-api-key"
    }
    ```
+
    Or using OpenAI:
+
    ```json
    {
      "PROVIDER": "openai",

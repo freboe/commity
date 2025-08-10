@@ -1,13 +1,19 @@
 # 🤖 commity
 
-[简体中文](README.zh.md) | [English](README.md)
+[English](README.md) | [简体中文](README.zh.md)
 
 使用大语言模型（LLM）生成智能 Git 提交信息的工具，支持 Conventional Commits 格式和 emoji 插入。
 
 ## 🔧 安装
 
+使用 `pip` 安装:
 ```bash
 pip install commity
+```
+
+或者使用 `uv` 安装:
+```bash
+uv tool install commity
 ```
 
 ## ⚙️ 配置
@@ -82,13 +88,17 @@ export COMMITY_TEMPERATURE=0.5
 为了更方便地管理配置，你可以在用户主目录下创建 `~/.commity/config.json` 文件。
 
 1. 创建目录：
+
    ```bash
    mkdir -p ~/.commity
    ```
+
 2. 创建并编辑 `config.json` 文件：
+
    ```bash
    touch ~/.commity/config.json
    ```
+
 3. 在 `config.json` 中添加你的配置，例如：
 
    ```json
@@ -98,7 +108,9 @@ export COMMITY_TEMPERATURE=0.5
      "BASE_URL": "http://localhost:11434"
    }
    ```
+
    或者使用 Gemini：
+
    ```json
    {
      "PROVIDER": "gemini",
@@ -107,7 +119,9 @@ export COMMITY_TEMPERATURE=0.5
      "API_KEY": "your-gemini-api-key"
    }
    ```
+
    或者使用 OpenAI：
+
    ```json
    {
      "PROVIDER": "openai",
