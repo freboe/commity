@@ -1,4 +1,5 @@
 import argparse
+import subprocess
 from importlib import metadata
 from rich import print
 from rich.panel import Panel
@@ -53,6 +54,13 @@ def main():
             commit_msg = client.generate(prompt)
         if commit_msg:
             print(Panel(Markdown(commit_msg), title="[bold green]✅ Suggested Commit Message[/bold green]", border_style="green"))
+            confirm = input("Do you want to commit with this message? (y/n): ")
+            if confirm.lower() == "y":
+                try:
+                    subprocess.run(["git", "commit", "-m", commit_msg], check=True)
+                    print(Panel("[bold green]✅ Committed successfully.[/bold green]", title="Success", border_style="green"))
+                except subprocess.CalledProcessError as e:
+                    print(Panel(f"[bold red]❌ Failed to commit: {e}[/bold red]", title="Error", border_style="red"))
         else:
             print(Panel("[bold red]❌ Failed to generate commit message.[/bold red]", title="Error", border_style="red"))
     except Exception as e:
