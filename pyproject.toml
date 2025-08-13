@@ -33,6 +33,8 @@ Tracker = "https://github.com/freboe/commity/issues"
 [dependency-groups]
 dev = [
     "hatch>=1.14.1",
+    "pre-commit>=4.3.0",
+    "ruff>=0.12.8",
     "twine>=6.1.0",
 ]
 
@@ -50,3 +52,9 @@ exclude = [
     "logs/",
     "*.log",
 ]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+select = ["E", "F", "W", "I", "N", "D", "UP", "ANN", "ASYNC", "B", "C4", "DTZ", "ERA", "ISC", "ICN", "PIE", "PT", "RSE", "RET", "SLF", "TCH", "PTH", "SIM", "ARG", "BLE", "FBT", "PERF", "RUF"]
+ignore = ["D100", "D104", "D105", "D107", "ANN101", "ANN002", "ANN003", "ANN401", "RUF001", "RUF002", "RUF003"]
