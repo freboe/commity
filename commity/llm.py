@@ -1,7 +1,8 @@
-import requests
-from typing import Optional
 from abc import ABC, abstractmethod
+
+import requests
 from rich import print
+
 
 class BaseLLMClient(ABC):
     def __init__(self, config):
@@ -13,14 +14,14 @@ class BaseLLMClient(ABC):
         return None
 
     @abstractmethod
-    def generate(self, prompt: str) -> Optional[str]:
+    def generate(self, prompt: str) -> str | None:
         raise NotImplementedError
 
 class OllamaClient(BaseLLMClient):
     default_base_url = "http://localhost:11434"
     default_model = "llama3"
 
-    def generate(self, prompt: str) -> Optional[str]:
+    def generate(self, prompt: str) -> str | None:
         headers = {"Content-Type": "application/json"}
         payload = {
             "model": self.config.model,
@@ -55,7 +56,7 @@ class GeminiClient(BaseLLMClient):
     default_base_url = "https://generativelanguage.googleapis.com"
     default_model = "gemini-2.5-flash"
 
-    def generate(self, prompt: str) -> Optional[str]:
+    def generate(self, prompt: str) -> str | None:
         headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
@@ -88,7 +89,7 @@ class OpenAIClient(BaseLLMClient):
     default_base_url = "https://api.openai.com/v1"
     default_model = "gpt-3.5-turbo"
 
-    def generate(self, prompt: str) -> Optional[str]:
+    def generate(self, prompt: str) -> str | None:
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.config.api_key}",
@@ -131,5 +132,4 @@ def llm_client_factory(config) -> BaseLLMClient:
     if provider in LLM_CLIENTS:
         client_class = LLM_CLIENTS[provider]
         return client_class(config)
-    else:
-        raise NotImplementedError(f"Provider {provider} is not supported.")
+    raise NotImplementedError(f"Provider {provider} is not supported.")

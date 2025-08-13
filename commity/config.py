@@ -1,13 +1,14 @@
-import os
 import json
+import os
 from dataclasses import dataclass
-from typing import Optional
+
 from commity.llm import LLM_CLIENTS
+
 
 def load_config_from_file():
     config_path = os.path.expanduser("~/.commity/config.json")
     if os.path.exists(config_path):
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             try:
                 return json.load(f)
             except json.JSONDecodeError:
@@ -20,11 +21,11 @@ class LLMConfig:
     provider: str
     base_url: str
     model: str
-    api_key: Optional[str] = None
+    api_key: str | None = None
     temperature: float = 0.3
     max_tokens: int = 1500
     timeout: int = 60
-    proxy: Optional[str] = None
+    proxy: str | None = None
     debug: bool = False
 
 def _resolve_config(arg_name, args, file_config, default, type_cast=None):
@@ -32,16 +33,16 @@ def _resolve_config(arg_name, args, file_config, default, type_cast=None):
     env_key = f"COMMITY_{arg_name.upper()}"
     file_key = arg_name.upper()
     args_val = getattr(args, arg_name, None)
-    
+
     value = args_val or os.getenv(env_key) or file_config.get(file_key) or default
-    
+
     if value is not None and type_cast:
         return type_cast(value)
     return value
 
 def get_llm_config(args) -> LLMConfig:
     file_config = load_config_from_file()
-    
+
     provider = _resolve_config("provider", args, file_config, "gemini")
 
     client_class = LLM_CLIENTS.get(provider, LLM_CLIENTS["gemini"])

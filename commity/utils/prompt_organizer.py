@@ -1,5 +1,7 @@
 import re
+
 import tiktoken
+
 
 def check_diff_length(diff_text, threshold=15000):
     if len(diff_text) > threshold:
@@ -34,8 +36,7 @@ def compress_diff_to_bullets(diff_text, max_lines=200):
 
 
 def summary_and_tokens_checker(diff_text, max_output_tokens, model_name: str):
-    """
-    添加总结和压缩版本的diff，构建有效长度的tokens的提示词语，避免过长导致模型生成失败
+    """添加总结和压缩版本的diff，构建有效长度的tokens的提示词语，避免过长导致模型生成失败
     :param diff_text:
     :param max_output_tokens:
     :return:
