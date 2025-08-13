@@ -29,6 +29,7 @@ def main():
     parser.add_argument("--emoji", action="store_true", help="Include emojis")
     parser.add_argument("--type", type=str, default="conventional", help="Commit style type")
     parser.add_argument("--show-config", action="store_true", help="Show current configuration")
+    parser.add_argument("--confirm", type=str, default="y", choices=['y', 'n'], help="Confirm before committing (y/n)")
 
     args = parser.parse_args()
     config = get_llm_config(args)
@@ -54,13 +55,14 @@ def main():
             commit_msg = client.generate(prompt)
         if commit_msg:
             print(Panel(Markdown(commit_msg), title="[bold green]✅ Suggested Commit Message[/bold green]", border_style="green"))
-            confirm = input("Do you want to commit with this message? (y/n): ")
-            if confirm.lower() == "y":
-                try:
-                    subprocess.run(["git", "commit", "-m", commit_msg], check=True)
-                    print(Panel("[bold green]✅ Committed successfully.[/bold green]", title="Success", border_style="green"))
-                except subprocess.CalledProcessError as e:
-                    print(Panel(f"[bold red]❌ Failed to commit: {e}[/bold red]", title="Error", border_style="red"))
+            if args.confirm == 'y':
+                confirm_input = input("Do you want to commit with this message? (y/N): ")
+                if confirm_input.lower() == "y":
+                    try:
+                        subprocess.run(["git", "commit", "-m", commit_msg], check=True)
+                        print(Panel("[bold green]✅ Committed successfully.[/bold green]", title="Success", border_style="green"))
+                    except subprocess.CalledProcessError as e:
+                        print(Panel(f"[bold red]❌ Failed to commit: {e}[/bold red]", title="Error", border_style="red"))
         else:
             print(Panel("[bold red]❌ Failed to generate commit message.[/bold red]", title="Error", border_style="red"))
     except Exception as e:
