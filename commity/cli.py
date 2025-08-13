@@ -4,6 +4,8 @@ from importlib import metadata
 from rich import print
 from rich.panel import Panel
 from rich.markdown import Markdown
+from rich.rule import Rule
+from rich.prompt import Prompt
 from commity.config import get_llm_config
 from commity.core import get_git_diff, generate_prompt
 from commity.llm import llm_client_factory
@@ -43,7 +45,7 @@ def main():
 
     diff = get_git_diff()
     if not diff:
-        print(Panel("[bold yellow]⚠️ No staged changes detected.[/bold yellow]", title="Warning", border_style="yellow"))
+        print(Panel("[bold yellow]⚠️ No staged changes detected.[/bold yellow]", title="[bold yellow]Warning[/bold yellow]", border_style="yellow"))
         return
     else:
         diff = summary_and_tokens_checker(diff, config.max_tokens, config.model)
@@ -54,9 +56,13 @@ def main():
         with spinner("🚀 Generating commit message..."):
             commit_msg = client.generate(prompt)
         if commit_msg:
-            print(Panel(Markdown(commit_msg), title="[bold green]✅ Suggested Commit Message[/bold green]", border_style="green"))
+            # print(Panel(Markdown(commit_msg), title="[bold green]✅ Suggested Commit Message[/bold green]", border_style="none"))
+            print(Rule("[bold green] Suggested Commit Message[/bold green]"))
+            print(Markdown(commit_msg))
+            print(Rule(style="green"))
             if args.confirm == 'y':
-                confirm_input = input("Do you want to commit with this message? (y/N): ")
+                # confirm_input = input("Do you want to commit with this message? (y/N): ")
+                confirm_input = Prompt.ask("Do you want to commit with this message?", choices=["y", "n"], default="n")
                 if confirm_input.lower() == "y":
                     try:
                         subprocess.run(["git", "commit", "-m", commit_msg], check=True)
