@@ -1,16 +1,19 @@
 import argparse
 import subprocess
 from importlib import metadata
+
 from rich import print
-from rich.panel import Panel
 from rich.markdown import Markdown
-from rich.rule import Rule
+from rich.panel import Panel
 from rich.prompt import Prompt
+from rich.rule import Rule
+
 from commity.config import get_llm_config
-from commity.core import get_git_diff, generate_prompt
+from commity.core import generate_prompt, get_git_diff
 from commity.llm import llm_client_factory
 from commity.utils.prompt_organizer import summary_and_tokens_checker
 from commity.utils.spinner import spinner
+
 
 def main():
     try:
@@ -25,7 +28,8 @@ def main():
     parser.add_argument("--api_key", type=str, help="LLM API key")
     parser.add_argument("--language", type=str, default="en", help="Language for commit message")
     parser.add_argument("--temperature", type=float, help="Temperature for generation")
-    parser.add_argument("--max_tokens", type=int, help="Max tokens for generation")
+    parser.add_argument("--max_tokens", type=int, help="Max tokens for LLM response generation")
+    parser.add_argument("--max_subject_chars", type=int, help="Max characters for the generated commit message (subject)")
     parser.add_argument("--timeout", type=int, help="Timeout in seconds")
     parser.add_argument("--proxy", type=str, help="Proxy URL")
     parser.add_argument("--emoji", action="store_true", help="Include emojis")
@@ -47,16 +51,16 @@ def main():
     if not diff:
         print(Panel("[bold yellow]⚠️ No staged changes detected.[/bold yellow]", title="[bold yellow]Warning[/bold yellow]", border_style="yellow"))
         return
-    else:
-        diff = summary_and_tokens_checker(diff, config.max_tokens, config.model)
+    diff = summary_and_tokens_checker(diff, config.max_tokens, config.model)
 
 
-    prompt = generate_prompt(diff, language=args.language, emoji=args.emoji, type_=args.type)
+    prompt = generate_prompt(diff, language=args.language, emoji=args.emoji, type_=args.type, max_subject_chars=args.max_subject_chars)
     try:
         with spinner("🚀 Generating commit message..."):
             commit_msg = client.generate(prompt)
         if commit_msg:
-            # print(Panel(Markdown(commit_msg), title="[bold green]✅ Suggested Commit Message[/bold green]", border_style="none"))
+            # TODO Post-process: Truncate commit message if it exceeds max_subject_chars
+
             print(Rule("[bold green] Suggested Commit Message[/bold green]"))
             print(Markdown(commit_msg))
             print(Rule(style="green"))
