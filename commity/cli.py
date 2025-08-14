@@ -15,6 +15,24 @@ from commity.utils.prompt_organizer import summary_and_tokens_checker
 from commity.utils.spinner import spinner
 
 
+def _run_commit(commit_msg: str):
+    try:
+        subprocess.run(["git", "commit", "-m", commit_msg], check=True)
+        print(Panel("[bold green]✅ Committed successfully.[/bold green]", title="Success", border_style="green"))
+        return True
+    except subprocess.CalledProcessError as e:
+        print(Panel(f"[bold red]❌ Failed to commit: {e}[/bold red]", title="Error", border_style="red"))
+        return False
+
+def _run_push():
+    try:
+        subprocess.run(["git", "push"], check=True)
+        print(Panel("[bold green]✅ Pushed successfully.[/bold green]", title="Success", border_style="green"))
+        return True
+    except subprocess.CalledProcessError as e:
+        print(Panel(f"[bold red]❌ Failed to push: {e}[/bold red]", title="Error", border_style="red"))
+        return False
+
 def main():
     try:
         version = metadata.version("commity")
@@ -68,21 +86,10 @@ def main():
                 # confirm_input = input("Do you want to commit with this message? (y/N): ")
                 confirm_input = Prompt.ask("Do you want to commit with this message?", choices=["y", "n"], default="n")
                 if confirm_input.lower() == "y":
-                    try:
-                        subprocess.run(["git", "commit", "-m", commit_msg], check=True)
-                        print(Panel("[bold green]✅ Committed successfully.[/bold green]", title="Success", border_style="green"))
-
-                        # Add push functionality
+                    if _run_commit(commit_msg):
                         push_input = Prompt.ask("Do you want to push changes?", choices=["y", "n"], default="n")
                         if push_input.lower() == "y":
-                            try:
-                                subprocess.run(["git", "push"], check=True)
-                                print(Panel("[bold green]✅ Pushed successfully.[/bold green]", title="Success", border_style="green"))
-                            except subprocess.CalledProcessError as e:
-                                print(Panel(f"[bold red]❌ Failed to push: {e}[/bold red]", title="Error", border_style="red"))
-
-                    except subprocess.CalledProcessError as e:
-                        print(Panel(f"[bold red]❌ Failed to commit: {e}[/bold red]", title="Error", border_style="red"))
+                            _run_push()
         else:
             print(Panel("[bold red]❌ Failed to generate commit message.[/bold red]", title="Error", border_style="red"))
     except Exception as e:
