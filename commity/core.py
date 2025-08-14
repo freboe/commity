@@ -14,6 +14,7 @@ def generate_prompt(diff: str, language: str = "en", emoji: bool = True, type_: 
 
 Follow these rules:
 - First line (title) should briefly summarize the change in ≤{max_subject_chars} characters, starting with a type prefix, no period at the end.
+    - Type prefix must be lowercase.
 - Leave one blank line after the title.
 - Body (optional) should describe motivation, background, implementation details, or impact, in 1–3 paragraphs, with ≤72 characters per line.
 - If related to an issue/task, reference it at the end of the body, e.g.:
