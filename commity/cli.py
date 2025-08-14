@@ -71,6 +71,16 @@ def main():
                     try:
                         subprocess.run(["git", "commit", "-m", commit_msg], check=True)
                         print(Panel("[bold green]✅ Committed successfully.[/bold green]", title="Success", border_style="green"))
+
+                        # Add push functionality
+                        push_input = Prompt.ask("Do you want to push changes?", choices=["y", "n"], default="n")
+                        if push_input.lower() == "y":
+                            try:
+                                subprocess.run(["git", "push"], check=True)
+                                print(Panel("[bold green]✅ Pushed successfully.[/bold green]", title="Success", border_style="green"))
+                            except subprocess.CalledProcessError as e:
+                                print(Panel(f"[bold red]❌ Failed to push: {e}[/bold red]", title="Error", border_style="red"))
+
                     except subprocess.CalledProcessError as e:
                         print(Panel(f"[bold red]❌ Failed to commit: {e}[/bold red]", title="Error", border_style="red"))
         else:
