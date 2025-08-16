@@ -1,0 +1,29 @@
+name: Ruff
+
+on: [push, pull_request]
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    - name: Install dependencies
+      run: |
+        uv sync
+    - name: Run Ruff linter
+      run: |
+        uv run ruff check .
+    - name: Run Ruff formatter
+      run: |
+        uv run ruff format --check .
