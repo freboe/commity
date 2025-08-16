@@ -20,7 +20,9 @@ from commity.utils.spinner import spinner
 
 def _run_commit(commit_msg: str):
     try:
-        subprocess.run(["git", "commit", "-m", commit_msg], check=True)
+        subprocess.run(
+            ["git", "commit", "-m", commit_msg], check=True, capture_output=True, text=True
+        )
         print(
             Panel(
                 "[bold green]✅ Committed successfully.[/bold green]",
@@ -30,17 +32,14 @@ def _run_commit(commit_msg: str):
         )
         return True
     except subprocess.CalledProcessError as e:
-        print(
-            Panel(
-                f"[bold red]❌ Failed to commit: {e}[/bold red]", title="Error", border_style="red"
-            )
-        )
+        error_message = f"Failed to commit: {e.stderr.strip()}"
+        print(Panel(f"[bold red]❌ {error_message}[/bold red]", title="Error", border_style="red"))
         return False
 
 
 def _run_push():
     try:
-        subprocess.run(["git", "push"], check=True)
+        subprocess.run(["git", "push"], check=True, capture_output=True, text=True)
         print(
             Panel(
                 "[bold green]✅ Pushed successfully.[/bold green]",
@@ -50,9 +49,8 @@ def _run_push():
         )
         return True
     except subprocess.CalledProcessError as e:
-        print(
-            Panel(f"[bold red]❌ Failed to push: {e}[/bold red]", title="Error", border_style="red")
-        )
+        error_message = f"Failed to push: {e.stderr.strip()}"
+        print(Panel(f"[bold red]❌ {error_message}[/bold red]", title="Error", border_style="red"))
         return False
 
 
