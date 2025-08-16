@@ -29,7 +29,11 @@ test: ## 运行测试
 	uv run python -m pytest
 
 build: ## 构建项目
+	uv run hatch clean
 	uv run hatch build
+
+publish: ## 发布项目
+	uv run twine upload dist/*
 
 clean: ## 清理构建文件
 	uv run hatch clean
