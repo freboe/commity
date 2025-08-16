@@ -63,7 +63,7 @@ def summary_and_tokens_checker(diff_text: str, max_output_tokens: int, model_nam
     if token_count <= max_user_tokens:
         return diff_text
 
-    _, warning_msg = check_diff_length(diff_text)
+    warning_triggered, warning_msg = check_diff_length(diff_text)
     prompt_summary = generate_prompt_summary(diff_text)
     compressed_diff = compress_diff_to_bullets(diff_text)
 
