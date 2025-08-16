@@ -1,6 +1,7 @@
 import json
 import os
 from dataclasses import dataclass
+from typing import Any
 
 from commity.llm import LLM_CLIENTS
 
@@ -30,16 +31,31 @@ class LLMConfig:
     debug: bool = False
 
 
-def _resolve_config(arg_name, args, file_config, default, type_cast=None):
+def _resolve_config(
+    arg_name: str, args: Any, file_config: dict, default: Any, type_cast: Any = None
+) -> Any:
     """Helper to resolve config values from args, env, or file."""
     env_key = f"COMMITY_{arg_name.upper()}"
     file_key = arg_name.upper()
     args_val = getattr(args, arg_name, None)
 
-    value = args_val or os.getenv(env_key) or file_config.get(file_key) or default
+    # Priority: Command-line Arguments > Environment Variables > Configuration File > Default
+    value = args_val
+    if value is None:
+        value = os.getenv(env_key)
+    if value is None:
+        value = file_config.get(file_key)
+    if value is None:
+        value = default
 
     if value is not None and type_cast:
-        return type_cast(value)
+        try:
+            return type_cast(value)
+        except (ValueError, TypeError):
+            print(
+                f"Warning: Could not cast config value '{value}' for '{arg_name}' to type {type_cast.__name__}. Using default."
+            )
+            return default
     return value
 
 
