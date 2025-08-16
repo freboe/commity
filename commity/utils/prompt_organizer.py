@@ -67,17 +67,25 @@ def summary_and_tokens_checker(diff_text: str, max_output_tokens: int, model_nam
     prompt_summary = generate_prompt_summary(diff_text)
     compressed_diff = compress_diff_to_bullets(diff_text)
 
-    # 构建最终提示
-    prompt = f"{warning_msg}\n{prompt_summary}\n\n🔍 Change details (compressed version)：\n{compressed_diff}"
+    # 构建最终提示，优先使用压缩版本
+    final_prompt = f"{warning_msg}\n{prompt_summary}\n\n🔍 Change details (compressed version)：\n{compressed_diff}"
 
-    final_prompt = prompt
-    len_prompt = len(final_prompt)
-    step_size = 100
-    while count_tokens(final_prompt, model_name) > max_user_tokens and len_prompt > step_size:
-        final_prompt = final_prompt[: (len_prompt - step_size)]
-        len_prompt = len(final_prompt)
-    has_truncated = len_prompt < len(prompt)
-    if has_truncated:
-        final_prompt = final_prompt + "\n...<truncated>"
+    # 再次检查 token 数量，如果仍然过长，则进一步截断
+    if count_tokens(final_prompt, model_name) > max_user_tokens:
+        # 简单截断，保留开头部分
+        # 计算需要截断的字符数
+        current_tokens = count_tokens(final_prompt, model_name)
+        excess_tokens = current_tokens - max_user_tokens
+        # 估算每个 token 对应的字符数，这里简单假设一个 token 约等于 4 个字符（对于英文）
+        # 这是一个粗略的估算，实际应根据具体模型和语言调整
+        chars_to_remove = excess_tokens * 4
+
+        if len(final_prompt) > chars_to_remove:
+            final_prompt = final_prompt[: len(final_prompt) - chars_to_remove] + "\n...<truncated>"
+        else:
+            # 如果整个 prompt 都太长，只保留一个非常短的提示
+            final_prompt = (
+                "Diff is too large to process. Please stage fewer changes.\n...<truncated>"
+            )
 
     return final_prompt
