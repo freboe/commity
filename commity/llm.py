@@ -2,7 +2,15 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import requests
-from rich import print
+
+
+class LLMGenerationError(Exception):
+    """Custom exception for LLM generation failures."""
+
+    def __init__(self, message: str, status_code: int | None = None, details: str | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.details = details
 
 
 class BaseLLMClient(ABC):
@@ -16,6 +24,19 @@ class BaseLLMClient(ABC):
         if self.config.proxy:
             return {"http": self.config.proxy, "https": self.config.proxy}
         return None
+
+    def _handle_llm_error(self, e: Exception, response: requests.Response | None = None) -> None:
+        """统一处理 LLM 相关的错误。"""
+        error_message = str(e)
+        status_code = None
+        details = None
+
+        if response is not None:
+            status_code = response.status_code
+            details = response.text
+            error_message = f"LLM API error: {status_code} - {details}"
+
+        raise LLMGenerationError(error_message, status_code, details)
 
     @abstractmethod
     def generate(self, prompt: str) -> str | None:
@@ -47,15 +68,14 @@ class OllamaClient(BaseLLMClient):
                 proxies=self._get_proxies(),
             )
             if response.status_code != 200:
-                print(f"[LLM Error] {response.status_code} - {response.text}")
-                return None
+                self._handle_llm_error(ValueError("Non-200 status code"), response)
             response.raise_for_status()
             json_response = response.json()
             result = json_response.get("response", None)
             return result
         except Exception as e:
-            print(f"[LLM Error] {e}")
-            return None
+            self._handle_llm_error(e)
+        return None
 
 
 class GeminiClient(BaseLLMClient):
@@ -84,15 +104,14 @@ class GeminiClient(BaseLLMClient):
                 proxies=self._get_proxies(),
             )
             if response.status_code != 200:
-                print(f"[LLM Error] {response.status_code} - {response.text}")
-                return None
+                self._handle_llm_error(ValueError("Non-200 status code"), response)
             response.raise_for_status()
             json_response = response.json()
             candidates = json_response.get("candidates", [])
             return candidates[0]["content"]["parts"][0]["text"] if candidates else None
         except Exception as e:
-            print(f"[LLM Error] {e}")
-            return None
+            self._handle_llm_error(e)
+        return None
 
 
 class OpenAIClient(BaseLLMClient):
@@ -120,15 +139,14 @@ class OpenAIClient(BaseLLMClient):
                 proxies=self._get_proxies(),
             )
             if response.status_code != 200:
-                print(f"[LLM Error] {response.status_code} - {response.text}")
-                return None
+                self._handle_llm_error(ValueError("Non-200 status code"), response)
             response.raise_for_status()
             json_response = response.json()
             result = json_response["choices"][0]["message"]["content"]
             return result
         except Exception as e:
-            print(f"[LLM Error] {e}")
-            return None
+            self._handle_llm_error(e)
+        return None
 
 
 class OpenRouterClient(BaseLLMClient):
@@ -158,15 +176,14 @@ class OpenRouterClient(BaseLLMClient):
                 proxies=self._get_proxies(),
             )
             if response.status_code != 200:
-                print(f"[LLM Error] {response.status_code} - {response.text}")
-                return None
+                self._handle_llm_error(ValueError("Non-200 status code"), response)
             response.raise_for_status()
             json_response = response.json()
             result = json_response["choices"][0]["message"]["content"]
             return result
         except Exception as e:
-            print(f"[LLM Error] {e}")
-            return None
+            self._handle_llm_error(e)
+        return None
 
 
 LLM_CLIENTS = {
