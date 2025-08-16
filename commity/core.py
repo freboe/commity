@@ -13,7 +13,8 @@ def generate_prompt(diff: str, language: str = "en", emoji: bool = True, type_: 
     prompt = f"""As an expert in writing clear, concise, and informative Git commit messages, your task is to generate a commit message in {language} based on the provided Git diff.
 
 Follow these rules:
-- The header (first line) must not exceed {max_subject_chars} characters.
+- First line (title) should briefly summarize the change in ≤{max_subject_chars} characters, starting with a type prefix, no period at the end.
+    - Type prefix must be lowercase.
 - The body (optional) should provide more details, with each line not exceeding 72 characters.
 - A footer (optional) can be used for `BREAKING CHANGE` or referencing issues (e.g., `Closes #123`)."""
 
