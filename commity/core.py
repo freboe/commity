@@ -25,7 +25,8 @@ Follow these rules:
 - First line (title) should briefly summarize the change in ≤{max_subject_chars} characters, starting with a type prefix, no period at the end.
     - Type prefix must be lowercase.
 - The body (optional) should provide more details, with each line not exceeding 72 characters.
-- A footer (optional) can be used for `BREAKING CHANGE` or referencing issues (e.g., `Closes #123`)."""
+- A footer (optional) can be used for `BREAKING CHANGE` or referencing issues (e.g., `Closes #123`).
+- The output must be plain text, without any markdown syntax (e.g., no ` ``` `, `*`, `-`, etc.)."""
 
     if type_ == "conventional":
         prompt += """
