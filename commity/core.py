@@ -4,11 +4,19 @@ import subprocess
 def get_git_diff() -> str:
     try:
         result = subprocess.run(
-            ["git", "diff", "--staged"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            ["git", "diff", "--staged"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,  # Add check=True to raise CalledProcessError for non-zero exit codes
         )
         return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        print(f"[Git Error] Command '{e.cmd}' failed with exit code {e.returncode}.")
+        print(f"Stderr: {e.stderr.strip()}")
+        return ""
     except Exception as e:
-        print(f"[Git Error] {e}")
+        print(f"[Git Error] An unexpected error occurred: {e}")
         return ""
 
 
@@ -19,7 +27,7 @@ def generate_prompt(
     type_: str = "conventional",
     max_subject_chars: int = 50,
 ) -> str:
-    prompt = f"""As an expert in writing clear, concise, and informative Git commit messages, your task is to generate a commit message in {language} based on the provided Git diff.
+    base_rules = f"""As an expert in writing clear, concise, and informative Git commit messages, your task is to generate a commit message in {language} based on the provided Git diff.
 
 Follow these rules:
 - First line (title) should briefly summarize the change in ≤{max_subject_chars} characters, starting with a type prefix, no period at the end.
@@ -29,8 +37,7 @@ Follow these rules:
 - A footer (optional) can be used for `BREAKING CHANGE` or referencing issues (e.g., `Closes #123`).
 - The output must be plain text, without any markdown syntax (e.g., no ` ``` `, `*`, `-`, etc.)."""
 
-    if type_ == "conventional":
-        prompt += """
+    conventional_rules = """
 - The commit message must follow the Conventional Commits specification.
 - The format is: `type(scope): description`.
   - `type`: Must be one of the following:
@@ -49,8 +56,7 @@ Follow these rules:
   - `description`: A short summary of the code changes. Use the imperative, present tense (e.g., "add" not "added" nor "adds").
 """
 
-    if emoji:
-        prompt += """- Use emojis in the subject line, mapping the commit type to a specific emoji. Here is the mapping:
+    emoji_rules = """- Use emojis in the subject line, mapping the commit type to a specific emoji. Here is the mapping:
     - feat: ✨ (new feature)
     - fix: 🐛 (bug fix)
     - docs: 📚 (documentation)
@@ -63,12 +69,22 @@ Follow these rules:
     - chore: 🔧 (chores)
     - revert: ⏪ (revert)
 """
-    else:
-        prompt += "- Do not include emojis.\n"
 
-    prompt += f"""
+    no_emoji_rule = "- Do not include emojis.\n"
+
+    prompt_parts = [base_rules]
+
+    if type_ == "conventional":
+        prompt_parts.append(conventional_rules)
+
+    if emoji:
+        prompt_parts.append(emoji_rules)
+    else:
+        prompt_parts.append(no_emoji_rule)
+
+    prompt_parts.append(f"""
 Git Diff:
 {diff}
-    """
+""")
 
-    return prompt
+    return "".join(prompt_parts)
