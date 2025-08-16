@@ -33,9 +33,11 @@ Tracker = "https://github.com/freboe/commity/issues"
 [dependency-groups]
 dev = [
     "hatch>=1.14.1",
+    "mypy>=1.17.1",
     "pre-commit>=4.3.0",
     "ruff>=0.12.8",
     "twine>=6.1.0",
+    "types-requests>=2.32.4.20250809",
 ]
 
 [project.scripts]
@@ -113,12 +115,17 @@ ignore = [
     "ANN202",  # Missing return type annotation for private function
     "ANN204",  # Missing return type annotation for special method
     "ANN001",  # Missing type annotation for function argument
+    "ANN101",  # Missing type annotation for self in method
     "BLE001",  # Do not catch blind exception
     "FBT001",  # Boolean-typed positional argument in function definition
     "FBT002",  # Boolean default positional argument in function definition
     "RET504",  # Unnecessary assignment to variable before return statement
     "SIM102",  # Use a single if statement instead of nested if statements
     "ERA001",  # Found commented-out code
+    "PTH111",  # os.path.expanduser() should be replaced by Path.expanduser()
+    "PTH110",  # os.path.exists() should be replaced by Path.exists()
+    "PTH123",  # open() should be replaced by Path.open()
+    "UP022",  # Prefer capture_output over sending stdout and stderr to PIPE
 ]
 
 [tool.ruff.format]

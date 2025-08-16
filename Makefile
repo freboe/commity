@@ -47,4 +47,4 @@ setup: install-dev pre-commit-install ## 完整设置开发环境
 	@echo "  make lint      - 检查代码质量"
 	@echo "  make fix       - 自动修复问题"
 	@echo "  make check     - 检查格式和质量"
-	@echo "  make typecheck - 类型检查" 
+	@echo "  make typecheck - 类型检查"

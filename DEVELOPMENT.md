@@ -17,7 +17,7 @@ uv run pre-commit install
 项目已经配置了 VS Code 设置，包括：
 - 自动格式化（保存时）
 - Ruff 代码检查
-- MyPy 类型检查
+- MyPy 类型检查 (uv add --group dev mypy types-requests)
 - 自动导入排序
 
 ## 开发工作流
@@ -148,4 +148,4 @@ make pre-commit-run
 3. 类型错误会被检查
 4. 文件格式会被验证
 
-如果提交失败，请运行 `make fix` 修复问题后重新提交。 
+如果提交失败，请运行 `make fix` 修复问题后重新提交。
