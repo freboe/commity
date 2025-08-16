@@ -23,7 +23,7 @@ class LLMConfig:
     model: str
     api_key: str | None = None
     temperature: float = 0.3
-    max_tokens: int = 1500
+    max_tokens: int = 3000
     timeout: int = 60
     proxy: str | None = None
     debug: bool = False
@@ -53,7 +53,7 @@ def get_llm_config(args) -> LLMConfig:
     model = _resolve_config("model", args, file_config, default_model)
     api_key = _resolve_config("api_key", args, file_config, None)
     temperature = _resolve_config("temperature", args, file_config, 0.3, float)
-    max_tokens = _resolve_config("max_tokens", args, file_config, 1500, int)
+    max_tokens = _resolve_config("max_tokens", args, file_config, 3000, int)
     timeout = _resolve_config("timeout", args, file_config, 60, int)
     proxy = _resolve_config("proxy", args, file_config, None)
     debug = file_config.get("DEBUG", False)

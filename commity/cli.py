@@ -11,7 +11,10 @@ from rich.rule import Rule
 from commity.config import get_llm_config
 from commity.core import generate_prompt, get_git_diff
 from commity.llm import llm_client_factory
-from commity.utils.prompt_organizer import summary_and_tokens_checker
+from commity.utils.prompt_organizer import (
+    count_tokens,
+    summary_and_tokens_checker,
+)
 from commity.utils.spinner import spinner
 
 
@@ -69,8 +72,12 @@ def main():
     if not diff:
         print(Panel("[bold yellow]⚠️ No staged changes detected.[/bold yellow]", title="[bold yellow]Warning[/bold yellow]", border_style="yellow"))
         return
-    diff = summary_and_tokens_checker(diff, config.max_tokens, config.model)
 
+    base_prompt = generate_prompt("", language=args.language, emoji=args.emoji, type_=args.type, max_subject_chars=args.max_subject_chars)
+    system_prompt_tokens = count_tokens(base_prompt, config.model)
+
+    diff_token_budget =  max(config.max_tokens - system_prompt_tokens, 100)
+    diff = summary_and_tokens_checker(diff, max_output_tokens=diff_token_budget, model_name=config.model)
 
     prompt = generate_prompt(diff, language=args.language, emoji=args.emoji, type_=args.type, max_subject_chars=args.max_subject_chars)
     try:

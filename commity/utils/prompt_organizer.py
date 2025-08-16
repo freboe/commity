@@ -1,4 +1,5 @@
 import re
+from functools import lru_cache
 
 import tiktoken
 
@@ -34,24 +35,28 @@ def compress_diff_to_bullets(diff_text, max_lines=200):
     return "\n".join(compressed)
 
 
+@lru_cache(maxsize=10)
+def get_tokenizer(model_name: str):
+    try:
+        return tiktoken.encoding_for_model(model_name)
+    except KeyError:
+        return tiktoken.get_encoding("cl100k_base")
 
-def summary_and_tokens_checker(diff_text, max_output_tokens, model_name: str):
+
+def count_tokens(text: str, model_name: str):
+    tokenizer = get_tokenizer(model_name)
+    return len(tokenizer.encode(text))
+
+
+def summary_and_tokens_checker(diff_text: str, max_output_tokens: int, model_name: str):
     """添加总结和压缩版本的diff，构建有效长度的tokens的提示词语，避免过长导致模型生成失败
     :param diff_text:
     :param max_output_tokens:
     :return:
     """
-    max_user_tokens = max_output_tokens * 0.8
+    max_user_tokens = max_output_tokens * 1
 
-    enc = tiktoken.get_encoding("cl100k_base")  # 通用 GPT-4 样式的分词器
-    try:
-        enc = tiktoken.encoding_for_model(model_name)
-    except KeyError:
-        # print(f"Warning: model {model_name} not found, using cl100k_base instead.")
-        pass
-    tokens = enc.encode(diff_text)
-
-    token_count = len(tokens)
+    token_count = count_tokens(diff_text, model_name)
     if token_count <= max_user_tokens:
         return diff_text
 
@@ -65,7 +70,7 @@ def summary_and_tokens_checker(diff_text, max_output_tokens, model_name: str):
     final_prompt = prompt
     len_prompt = len(final_prompt)
     step_size = 100
-    while len(enc.encode(final_prompt)) > max_user_tokens and len_prompt > step_size:
+    while count_tokens(final_prompt, model_name) > max_user_tokens and len_prompt > step_size:
         final_prompt = final_prompt[:(len_prompt - step_size)]
         len_prompt = len(final_prompt)
     has_truncated = len_prompt < len(prompt)

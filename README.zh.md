@@ -8,6 +8,16 @@
 
 使用 AI 生成智能 Git 提交信息。支持 Conventional Commits 格式、emoji 插入，并可选用 OpenAI、Ollama、Gemini 等多种大语言模型。
 
+## 🤔 什么是 Commity？
+
+**Commity** 是一款开源的、基于 AI 的 Git commit message 生成工具。它能够分析你暂存区的代码变更，并自动生成符合[**Conventional Commits**](https://www.conventionalcommits.org/) 规范的提交信息，甚至还能为你加上可爱的 emoji！
+
+只需一个简单的 `commity --emoji` 命令，你就能得到像这样专业而清晰的 commit message：
+
+```
+feat(api): ✨ add user authentication endpoint
+```
+
 ## 🔧 安装
 
 使用 `pip` 安装:
