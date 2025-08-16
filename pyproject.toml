@@ -41,6 +41,36 @@ dev = [
 [project.scripts]
 commity = "commity.cli:main"
 
+[tool.hatch.envs.default]
+dependencies = [
+    "requests>=2.32.4",
+    "tiktoken>=0.11.0",
+    "rich>=13.7.1",
+]
+
+[tool.hatch.envs.dev]
+dependencies = [
+    "requests>=2.32.4",
+    "tiktoken>=0.11.0",
+    "rich>=13.7.1",
+    "hatch>=1.14.1",
+    "pre-commit>=4.3.0",
+    "ruff>=0.12.8",
+    "twine>=6.1.0",
+    "mypy>=1.8.0",
+    "types-requests>=2.31.0",
+]
+
+[tool.hatch.envs.dev.scripts]
+format = "ruff format ."
+lint = "ruff check ."
+fix = "ruff check --fix ."
+check = "ruff check . && ruff format --check ."
+typecheck = "mypy ."
+test = "python -m pytest"
+build = "hatch build"
+clean = "hatch clean"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -54,7 +84,48 @@ exclude = [
 ]
 
 [tool.ruff]
-line-length = 88
+line-length = 100
 target-version = "py312"
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "D", "UP", "ANN", "ASYNC", "B", "C4", "DTZ", "ERA", "ISC", "ICN", "PIE", "PT", "RSE", "RET", "SLF", "TCH", "PTH", "SIM", "ARG", "BLE", "FBT", "PERF", "RUF"]
-ignore = ["D100", "D104", "D105", "D107", "ANN101", "ANN002", "ANN003", "ANN401", "RUF001", "RUF002", "RUF003"]
+ignore = [
+    "D100",  # Missing docstring in public module
+    "D104",  # Missing docstring in public package
+    "D105",  # Missing docstring in magic method
+    "D107",  # Missing docstring in __init__
+    "ANN002",  # Missing-type-args
+    "ANN003",  # Missing-type-kwargs
+    "ANN401",  # Dynamically-typed-expression
+    "RUF001",  # Ambiguous-unicode-character-string
+    "RUF002",  # Ambiguous-unicode-character-docstring
+    "RUF003",  # Ambiguous-unicode-character-comment
+    "E501",  # Line too long (handled by formatter)
+    "C901",  # Function is too complex
+    "D103",  # Missing docstring in public function
+    "D101",  # Missing docstring in public class
+    "D102",  # Missing docstring in public method
+    "D401",  # First line of docstring should be in imperative mood
+    "D205",  # 1 blank line required between summary line and description
+    "D400",  # First line should end with a period
+    "D415",  # First line should end with a period, question mark, or exclamation point
+    "ANN201",  # Missing return type annotation for public function
+    "ANN202",  # Missing return type annotation for private function
+    "ANN204",  # Missing return type annotation for special method
+    "ANN001",  # Missing type annotation for function argument
+    "BLE001",  # Do not catch blind exception
+    "FBT001",  # Boolean-typed positional argument in function definition
+    "FBT002",  # Boolean default positional argument in function definition
+    "RET504",  # Unnecessary assignment to variable before return statement
+    "SIM102",  # Use a single if statement instead of nested if statements
+    "ERA001",  # Found commented-out code
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["commity"]
