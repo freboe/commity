@@ -6,13 +6,16 @@ import tiktoken
 
 def check_diff_length(diff_text, threshold=15000):
     if len(diff_text) > threshold:
-        return True, f"⚠️ Diff too long ({len(diff_text)} characters), it is recommended to submit in batches or simplify changes。"
+        return (
+            True,
+            f"⚠️ Diff too long ({len(diff_text)} characters), it is recommended to submit in batches or simplify changes。",
+        )
     return False, ""
 
 
 def generate_prompt_summary(diff_text):
     # 提取文件名和修改行数（示例用 git diff 结构）
-    files = re.findall(r'diff --git a/(.+?) ', diff_text)
+    files = re.findall(r"diff --git a/(.+?) ", diff_text)
     summary = [f"- Change File：{file}" for file in files[:10]]  # 限制前10项
     return "📝 Change Summary：\n" + "\n".join(summary)
 
@@ -22,9 +25,9 @@ def compress_diff_to_bullets(diff_text, max_lines=200):
     compressed = []
 
     for line in lines:
-        if line.startswith('+') and not line.startswith('+++'):
+        if line.startswith("+") and not line.startswith("+++"):
             compressed.append(f"- Add：{line[1:].strip()}")
-        elif line.startswith('-') and not line.startswith('---'):
+        elif line.startswith("-") and not line.startswith("---"):
             compressed.append(f"- Delete：{line[1:].strip()}")
 
         if len(compressed) >= max_lines:
@@ -71,7 +74,7 @@ def summary_and_tokens_checker(diff_text: str, max_output_tokens: int, model_nam
     len_prompt = len(final_prompt)
     step_size = 100
     while count_tokens(final_prompt, model_name) > max_user_tokens and len_prompt > step_size:
-        final_prompt = final_prompt[:(len_prompt - step_size)]
+        final_prompt = final_prompt[: (len_prompt - step_size)]
         len_prompt = len(final_prompt)
     has_truncated = len_prompt < len(prompt)
     if has_truncated:

@@ -16,6 +16,7 @@ def load_config_from_file():
                 return {}
     return {}
 
+
 @dataclass
 class LLMConfig:
     provider: str
@@ -28,6 +29,7 @@ class LLMConfig:
     proxy: str | None = None
     debug: bool = False
 
+
 def _resolve_config(arg_name, args, file_config, default, type_cast=None):
     """Helper to resolve config values from args, env, or file."""
     env_key = f"COMMITY_{arg_name.upper()}"
@@ -39,6 +41,7 @@ def _resolve_config(arg_name, args, file_config, default, type_cast=None):
     if value is not None and type_cast:
         return type_cast(value)
     return value
+
 
 def get_llm_config(args) -> LLMConfig:
     file_config = load_config_from_file()

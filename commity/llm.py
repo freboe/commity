@@ -1,14 +1,18 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 import requests
 from rich import print
 
 
 class BaseLLMClient(ABC):
-    def __init__(self, config):
+    default_base_url: str = ""
+    default_model: str = ""
+
+    def __init__(self, config: Any) -> None:
         self.config = config
 
-    def _get_proxies(self):
+    def _get_proxies(self) -> dict[str, str] | None:
         if self.config.proxy:
             return {"http": self.config.proxy, "https": self.config.proxy}
         return None
@@ -16,6 +20,7 @@ class BaseLLMClient(ABC):
     @abstractmethod
     def generate(self, prompt: str) -> str | None:
         raise NotImplementedError
+
 
 class OllamaClient(BaseLLMClient):
     default_base_url = "http://localhost:11434"
@@ -52,6 +57,7 @@ class OllamaClient(BaseLLMClient):
             print(f"[LLM Error] {e}")
             return None
 
+
 class GeminiClient(BaseLLMClient):
     default_base_url = "https://generativelanguage.googleapis.com"
     default_model = "gemini-2.5-flash"
@@ -84,6 +90,7 @@ class GeminiClient(BaseLLMClient):
         except Exception as e:
             print(f"[LLM Error] {e}")
             return None
+
 
 class OpenAIClient(BaseLLMClient):
     default_base_url = "https://api.openai.com/v1"
@@ -120,6 +127,7 @@ class OpenAIClient(BaseLLMClient):
             print(f"[LLM Error] {e}")
             return None
 
+
 LLM_CLIENTS = {
     "gemini": GeminiClient,
     "ollama": OllamaClient,
@@ -127,9 +135,9 @@ LLM_CLIENTS = {
 }
 
 
-def llm_client_factory(config) -> BaseLLMClient:
+def llm_client_factory(config: Any) -> BaseLLMClient:
     provider = config.provider
     if provider in LLM_CLIENTS:
         client_class = LLM_CLIENTS[provider]
-        return client_class(config)
+        return client_class(config)  # type: ignore[abstract]
     raise NotImplementedError(f"Provider {provider} is not supported.")
