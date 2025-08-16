@@ -71,7 +71,10 @@ class GeminiClient(BaseLLMClient):
                 "maxOutputTokens": self.config.max_tokens,
             },
         }
-        url = f"{self.config.base_url}/v1beta/models/{self.config.model}:generateContent?key={self.config.api_key}"
+        url = (
+            f"{self.config.base_url}/v1beta/models/"
+            f"{self.config.model}:generateContent?key={self.config.api_key}"
+        )
         try:
             response = requests.post(
                 url,
@@ -128,10 +131,49 @@ class OpenAIClient(BaseLLMClient):
             return None
 
 
+class OpenRouterClient(BaseLLMClient):
+    default_base_url = "https://openrouter.ai/api/v1"
+    default_model = "qwen/qwen3-coder:free"
+
+    def generate(self, prompt: str) -> str | None:
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.config.api_key}",
+            # "HTTP-Referer": "https://github.com/freboe/commity",
+            "X-Title": "Commity CLI",
+        }
+        payload = {
+            "model": self.config.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": self.config.temperature,
+            "max_tokens": self.config.max_tokens,
+        }
+        url = f"{self.config.base_url}/chat/completions"
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=self.config.timeout,
+                proxies=self._get_proxies(),
+            )
+            if response.status_code != 200:
+                print(f"[LLM Error] {response.status_code} - {response.text}")
+                return None
+            response.raise_for_status()
+            json_response = response.json()
+            result = json_response["choices"][0]["message"]["content"]
+            return result
+        except Exception as e:
+            print(f"[LLM Error] {e}")
+            return None
+
+
 LLM_CLIENTS = {
     "gemini": GeminiClient,
     "ollama": OllamaClient,
     "openai": OpenAIClient,
+    "openrouter": OpenRouterClient,
 }
 
 

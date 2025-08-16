@@ -37,7 +37,7 @@ uv tool install commity
 `commity` supports three configuration methods, with the following priority: **Command-line Arguments > Environment
 Variables > Configuration File**.
 
-Supported model providers are: `Gemini` (default), `Ollama`, `OpenAI`.
+Supported model providers are: `Gemini` (default), `Ollama`, `OpenAI`, `OpenRouter`.
 
 ### ✨ Method 1: Specify Model Parameters via Command-line
 
@@ -70,6 +70,21 @@ commity \
 --timeout 30 \
 ```
 
+#### OpenRouter
+
+```Bash
+commity --provider openrouter --model openai/gpt-3.5-turbo --api_key <your-openrouter-api-key>
+```
+
+or
+
+```Bash
+commity \
+--provider openrouter \
+--model anthropic/claude-3.5-sonnet \
+--api_key <your-openrouter-api-key> \
+```
+
 ### 🌱 Method 2: Set Environment Variables as Defaults
 
 You can add the following to your `.bashrc`, `.zshrc`, or `.env` file:
@@ -97,6 +112,15 @@ export COMMITY_PROVIDER=gemini
 export COMMITY_MODEL=gemini-2.5-flash
 export COMMITY_BASE_URL=https://generativelanguage.googleapis.com
 export COMMITY_API_KEY=your-api-key
+export COMMITY_TEMPERATURE=0.5
+```
+
+#### OpenRouter
+
+```Bash
+export COMMITY_PROVIDER=openrouter
+export COMMITY_MODEL=openai/gpt-3.5-turbo
+export COMMITY_API_KEY=your-openrouter-api-key
 export COMMITY_TEMPERATURE=0.5
 ```
 
@@ -147,6 +171,16 @@ For easier configuration management, you can create a `~/.commity/config.json` f
    }
    ```
 
+   Or using OpenRouter:
+
+   ```json
+   {
+     "PROVIDER": "openrouter",
+     "MODEL": "openai/gpt-3.5-turbo",
+     "API_KEY": "your-openrouter-api-key"
+   }
+   ```
+
 ## 🚀 Usage
 
 ```Bash
@@ -161,3 +195,9 @@ commity --lang zh
 
 # Include emojis
 commity --emoji
+
+# Use OpenRouter with specific model
+commity --provider openrouter --model anthropic/claude-3.5-sonnet --api_key <your-openrouter-api-key>
+
+# Use OpenRouter with emoji support
+commity --provider openrouter --model openai/gpt-4o --api_key <your-openrouter-api-key> --emoji

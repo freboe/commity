@@ -36,7 +36,7 @@ uv tool install commity
 
 `commity` 支持通过三种方式进行配置，优先级从高到低依次为：**命令行参数 > 环境变量 > 配置文件**。
 
-支持的模型提供商有：`Gemini` (默认)、`Ollama`、`OpenAI`。
+支持的模型提供商有：`Gemini` (默认)、`Ollama`、`OpenAI`、`OpenRouter`。
 
 ### ✨ 方法一：运行命令时指定模型参数
 
@@ -99,6 +99,15 @@ export COMMITY_API_KEY=your-api-key
 export COMMITY_TEMPERATURE=0.5
 ```
 
+#### OpenRouter
+
+```Bash
+export COMMITY_PROVIDER=openrouter
+export COMMITY_MODEL=openai/gpt-3.5-turbo
+export COMMITY_API_KEY=your-openrouter-api-key
+export COMMITY_TEMPERATURE=0.5
+```
+
 ### 📝 方法三：使用配置文件（推荐）
 
 为了更方便地管理配置，你可以在用户主目录下创建 `~/.commity/config.json` 文件。
@@ -146,6 +155,16 @@ export COMMITY_TEMPERATURE=0.5
    }
    ```
 
+   或者使用 OpenRouter：
+
+   ```json
+   {
+     "PROVIDER": "openrouter",
+     "MODEL": "openai/gpt-3.5-turbo",
+     "API_KEY": "your-openrouter-api-key"
+   }
+   ```
+
 ## 🚀 使用
 
 ```Bash
@@ -159,3 +178,11 @@ commity --lang zh
 
 # 包含 emoji
 commity --emoji
+
+# 使用 OpenRouter 指定模型
+commity --provider openrouter --model anthropic/claude-3.5-sonnet --api_key <your-openrouter-api-key>
+
+# 使用 OpenRouter 并包含 emoji
+commity --provider openrouter --model openai/gpt-4o --api_key <your-openrouter-api-key> --emoji
+
+```
