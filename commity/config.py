@@ -1,17 +1,17 @@
 import json
 import os
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
-from commity.llm import LLM_CLIENTS
+from commity.llm import LLM_CLIENTS, BaseLLMClient
 
 
-def load_config_from_file():
+def load_config_from_file() -> dict[str, Any]:
     config_path = os.path.expanduser("~/.commity/config.json")
     if os.path.exists(config_path):
         with open(config_path) as f:
             try:
-                return json.load(f)
+                return cast("dict[str, Any]", json.load(f))
             except json.JSONDecodeError:
                 print(f"Warning: Could not decode JSON from {config_path}")
                 return {}
@@ -32,7 +32,7 @@ class LLMConfig:
 
 
 def _resolve_config(
-    arg_name: str, args: Any, file_config: dict, default: Any, type_cast: Any = None
+    arg_name: str, args: Any, file_config: dict[str, Any], default: Any, type_cast: Any = None
 ) -> Any:
     """Helper to resolve config values from args, env, or file."""
     env_key = f"COMMITY_{arg_name.upper()}"
@@ -48,6 +48,10 @@ def _resolve_config(
     if value is None:
         value = default
 
+    # If we have a default of None and value is also None, that's okay
+    if value is None and default is None:
+        return None
+
     if value is not None and type_cast:
         try:
             return type_cast(value)
@@ -59,12 +63,35 @@ def _resolve_config(
     return value
 
 
-def get_llm_config(args) -> LLMConfig:
+def _validate_config(config: LLMConfig) -> None:
+    """Validate the LLM configuration."""
+    if not config.provider:
+        raise ValueError("Provider must be specified")
+
+    if not config.base_url:
+        raise ValueError("Base URL must be specified")
+
+    if not config.model:
+        raise ValueError("Model must be specified")
+
+    if config.temperature < 0.0 or config.temperature > 1.0:
+        raise ValueError("Temperature must be between 0.0 and 1.0")
+
+    if config.max_tokens <= 0:
+        raise ValueError("Max tokens must be greater than 0")
+
+    if config.timeout <= 0:
+        raise ValueError("Timeout must be greater than 0")
+
+
+def get_llm_config(args: Any) -> LLMConfig:
     file_config = load_config_from_file()
 
     provider = _resolve_config("provider", args, file_config, "gemini")
 
-    client_class = LLM_CLIENTS.get(provider, LLM_CLIENTS["gemini"])
+    client_class: type[BaseLLMClient] = cast(
+        type[BaseLLMClient], LLM_CLIENTS.get(provider, LLM_CLIENTS["gemini"])
+    )
     default_base_url = client_class.default_base_url
     default_model = client_class.default_model
 
@@ -77,7 +104,7 @@ def get_llm_config(args) -> LLMConfig:
     proxy = _resolve_config("proxy", args, file_config, None)
     debug = file_config.get("DEBUG", False)
 
-    return LLMConfig(
+    config = LLMConfig(
         provider=provider,
         base_url=base_url,
         model=model,
@@ -88,3 +115,7 @@ def get_llm_config(args) -> LLMConfig:
         proxy=proxy,
         debug=debug,
     )
+
+    _validate_config(config)
+
+    return config

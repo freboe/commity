@@ -18,7 +18,7 @@ from commity.utils.prompt_organizer import (
 from commity.utils.spinner import spinner
 
 
-def _run_commit(commit_msg: str):
+def _run_commit(commit_msg: str) -> bool:
     try:
         subprocess.run(
             ["git", "commit", "-m", commit_msg], check=True, capture_output=True, text=True
@@ -37,7 +37,7 @@ def _run_commit(commit_msg: str):
         return False
 
 
-def _run_push():
+def _run_push() -> bool:
     try:
         subprocess.run(["git", "push"], check=True, capture_output=True, text=True)
         print(
@@ -54,7 +54,7 @@ def _run_push():
         return False
 
 
-def main():
+def main() -> None:
     try:
         version = metadata.version("commity")
     except metadata.PackageNotFoundError:
