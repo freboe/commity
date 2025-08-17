@@ -90,7 +90,7 @@ def get_llm_config(args: Any) -> LLMConfig:
     provider = _resolve_config("provider", args, file_config, "gemini")
 
     client_class: type[BaseLLMClient] = cast(
-        type[BaseLLMClient], LLM_CLIENTS.get(provider, LLM_CLIENTS["gemini"])
+        "type[BaseLLMClient]", LLM_CLIENTS.get(provider, LLM_CLIENTS["gemini"])
     )
     default_base_url = client_class.default_base_url
     default_model = client_class.default_model
