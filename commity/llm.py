@@ -109,7 +109,9 @@ class GeminiClient(BaseLLMClient):
             response = self._make_request(url, payload, headers)
             json_response = response.json()
             candidates = json_response.get("candidates", [])
-            return candidates[0]["content"]["parts"][0]["text"] if candidates else None
+            parts = candidates[0]["content"]["parts"] if candidates else []
+            # parts 第一个为"thought"，第二个为 answer
+            return parts[-1]["text"] if parts else None
         except Exception:
             return None
 
