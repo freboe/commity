@@ -28,6 +28,9 @@ typecheck: ## 类型检查
 test: ## 运行测试
 	uv run python -m pytest
 
+run-commity:
+	uv run python ./commity/cli.py --max_subject_chars 60 --proxy 127.0.0.1:10808 --emoji
+
 build: ## 构建项目
 	uv run hatch clean
 	uv run hatch build
