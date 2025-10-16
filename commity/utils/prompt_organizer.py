@@ -74,8 +74,10 @@ def summary_and_tokens_checker(diff_text: str, max_output_tokens: int, model_nam
     prompt_summary = generate_prompt_summary(diff_text)
     compressed_diff = compress_diff_to_bullets(diff_text)
 
+    original_prompt = f"{warning_msg}\n{prompt_summary}\n\n🔍 Change details (compressed version)：\n{compressed_diff}"
+
     # 构建最终提示，优先使用压缩版本
-    final_prompt = f"{warning_msg}\n{prompt_summary}\n\n🔍 Change details (compressed version)：\n{compressed_diff}"
+    final_prompt = original_prompt
 
     # 再次检查 token 数量，如果仍然过长，则进一步截断
     if count_tokens(final_prompt, model_name) > max_user_tokens:
@@ -90,9 +92,7 @@ def summary_and_tokens_checker(diff_text: str, max_output_tokens: int, model_nam
         if len(final_prompt) > chars_to_remove:
             final_prompt = final_prompt[: len(final_prompt) - chars_to_remove] + "\n...<truncated>"
         else:
-            # 如果整个 prompt 都太长，只保留一个非常短的提示
-            final_prompt = (
-                "Diff is too large to process. Please stage fewer changes.\n...<truncated>"
-            )
+            # 如果压缩后的内容仍然太长，返回 original_prompt 让模型处理，如果模型报错则展示错误信息
+            return original_prompt
 
     return final_prompt

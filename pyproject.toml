@@ -80,9 +80,28 @@ build-backend = "hatchling.build"
 [tool.hatch.build]
 exclude = [
     "BUILD_README.md",
+    "DEVELOPMENT.md",
+    "Makefile",
     "_ignore*",
     "logs/",
     "*.log",
+    "tests/",
+    "test_*",
+    "*.test.py",
+    "docs/",
+    "examples/",
+    ".git/",
+    ".github/",
+    "__pycache__/",
+    "*.pyc",
+    "*.pyo",
+    "*.pyd",
+    ".pytest_cache/",
+    ".mypy_cache/",
+    ".ruff_cache/",
+    "*.egg-info/",
+    "dist/",
+    "build/",
 ]
 
 [tool.ruff]

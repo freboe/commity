@@ -31,6 +31,9 @@ test: ## 运行测试
 run-commity:
 	uv run python ./commity/cli.py --max_subject_chars 60 --proxy 127.0.0.1:10808 --emoji
 
+# uv tool install ./dist/commity-0.1.15-py3-none-any.whl ## 在项目目录，运行命令用于安装本地代码进行调试
+# uv tool uninstall commity
+
 build: ## 构建项目
 	uv run hatch clean
 	uv run hatch build
