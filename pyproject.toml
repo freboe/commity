@@ -1,6 +1,6 @@
 [project]
 name = "commity"
-version = "0.1.15"
+version = "0.1.16"
 description = "Generate intelligent Git commit messages with AI. Supports Conventional Commits, emoji, and multiple LLM providers like OpenAI, Ollama, and Gemini."
 readme = "README.md"
 requires-python = ">=3.12"
