@@ -1,7 +1,8 @@
 import json
 import os
-from dataclasses import dataclass
 from typing import Any, cast
+
+from pydantic import BaseModel, Field, model_validator
 
 from commity.llm import LLM_CLIENTS, BaseLLMClient
 
@@ -20,17 +21,29 @@ def load_config_from_file() -> dict[str, Any]:
     return {}
 
 
-@dataclass
-class LLMConfig:
-    provider: str
-    base_url: str
-    model: str
-    api_key: str | None = None
-    temperature: float = 0.3
-    max_tokens: int = 3000
-    timeout: int = 60
-    proxy: str | None = None
-    debug: bool = False
+class LLMConfig(BaseModel):
+    """Configuration for LLM client."""
+
+    provider: str = Field(..., description="LLM provider name")
+    base_url: str = Field(..., description="Base URL for the LLM API")
+    model: str = Field(..., description="Model name to use")
+    api_key: str | None = Field(default=None, description="API key for authentication")
+    temperature: float = Field(
+        default=0.3, ge=0.0, le=1.0, description="Temperature for generation"
+    )
+    max_tokens: int = Field(default=3000, gt=0, description="Maximum tokens for response")
+    timeout: int = Field(default=60, gt=0, description="Request timeout in seconds")
+    proxy: str | None = Field(default=None, description="Proxy URL")
+    debug: bool = Field(default=False, description="Enable debug mode")
+
+    @model_validator(mode="after")
+    def validate_api_key_for_provider(self) -> "LLMConfig":
+        """Validate that providers requiring API keys have them."""
+        if self.provider in PROVIDERS_REQUIRING_API_KEY and not self.api_key:
+            raise ValueError(f"API key must be specified for provider '{self.provider}'")
+        return self
+
+    model_config = {"frozen": False, "validate_assignment": True}
 
 
 def _resolve_config(
@@ -65,30 +78,6 @@ def _resolve_config(
     return value
 
 
-def _validate_config(config: LLMConfig) -> None:
-    """Validate the LLM configuration."""
-    if not config.provider:
-        raise ValueError("Provider must be specified")
-
-    if not config.base_url:
-        raise ValueError("Base URL must be specified")
-
-    if not config.model:
-        raise ValueError("Model must be specified")
-
-    if config.temperature < 0.0 or config.temperature > 1.0:
-        raise ValueError("Temperature must be between 0.0 and 1.0")
-
-    if config.max_tokens <= 0:
-        raise ValueError("Max tokens must be greater than 0")
-
-    if config.timeout <= 0:
-        raise ValueError("Timeout must be greater than 0")
-
-    if config.provider in PROVIDERS_REQUIRING_API_KEY and not config.api_key:
-        raise ValueError(f"API key must be specified for provider '{config.provider}'")
-
-
 def get_llm_config(args: Any) -> LLMConfig:
     file_config = load_config_from_file()
 
@@ -109,6 +98,7 @@ def get_llm_config(args: Any) -> LLMConfig:
     proxy = _resolve_config("proxy", args, file_config, None)
     debug = file_config.get("DEBUG", False)
 
+    # Pydantic will automatically validate all fields when creating the instance
     config = LLMConfig(
         provider=provider,
         base_url=base_url,
@@ -120,7 +110,5 @@ def get_llm_config(args: Any) -> LLMConfig:
         proxy=proxy,
         debug=debug,
     )
-
-    _validate_config(config)
 
     return config
