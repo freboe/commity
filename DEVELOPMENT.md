@@ -123,6 +123,12 @@ make pre-commit-install
 make pre-commit-run
 ```
 
+## 运行与调试 CLI
+
+- 使用 `uv run python -m commity --help` 快速验证入口脚本（`python -m commity` 与 `commity` 命令等价）
+- `make run-commity` 提供了一个包含代理与 emoji 的示例调用，可按需修改参数。
+- 构建产物会输出到 `dist/` 目录，该目录已被 `.gitignore` 忽略；发布前可运行 `make clean` 或 `uv run hatch clean` 清理旧包，避免误提交。
+
 ## 编辑器集成
 
 ### VS Code

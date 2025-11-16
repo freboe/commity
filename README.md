@@ -38,6 +38,7 @@ uv tool install commity
 Variables > Configuration File**.
 
 Supported model providers are: `Gemini` (default), `Ollama`, `OpenAI`, `OpenRouter`.
+> Gemini, OpenAI, and OpenRouter always require an API key. Commity aborts early if those keys are missing so you get fast feedback before hitting the network.
 
 ### ✨ Method 1: Specify Model Parameters via Command-line
 
@@ -190,8 +191,8 @@ commity
 # View help
 commity --help
 
-# Use Chinese
-commity --lang zh
+# Use Chinese (--lang is kept as an alias)
+commity --language zh
 
 # Include emojis
 commity --emoji
@@ -201,3 +202,9 @@ commity --provider openrouter --model anthropic/claude-3.5-sonnet --api_key <you
 
 # Use OpenRouter with emoji support
 commity --provider openrouter --model openai/gpt-4o --api_key <your-openrouter-api-key> --emoji
+
+# Skip interactive confirmation and commit immediately
+commity --confirm n
+
+# Run via Python module entry point
+python -m commity --language zh --emoji

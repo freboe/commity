@@ -5,6 +5,8 @@ from typing import Any, cast
 
 from commity.llm import LLM_CLIENTS, BaseLLMClient
 
+PROVIDERS_REQUIRING_API_KEY = {"gemini", "openai", "openrouter"}
+
 
 def load_config_from_file() -> dict[str, Any]:
     config_path = os.path.expanduser("~/.commity/config.json")
@@ -82,6 +84,9 @@ def _validate_config(config: LLMConfig) -> None:
 
     if config.timeout <= 0:
         raise ValueError("Timeout must be greater than 0")
+
+    if config.provider in PROVIDERS_REQUIRING_API_KEY and not config.api_key:
+        raise ValueError(f"API key must be specified for provider '{config.provider}'")
 
 
 def get_llm_config(args: Any) -> LLMConfig:

@@ -84,7 +84,8 @@ class OllamaClient(BaseLLMClient):
             json_response = response.json()
             result = json_response.get("response", None)
             return result
-        except Exception:
+        except Exception as e:
+            self._handle_llm_error(e)
             return None
 
 
@@ -113,7 +114,8 @@ class GeminiClient(BaseLLMClient):
             # print(parts)
             # parts 第一个为"thought"，第二个为 answer
             return parts[-1]["text"] if parts else None
-        except Exception:
+        except Exception as e:
+            self._handle_llm_error(e)
             return None
 
 
@@ -138,7 +140,8 @@ class OpenAIClient(BaseLLMClient):
             json_response = response.json()
             result = json_response["choices"][0]["message"]["content"]
             return result
-        except Exception:
+        except Exception as e:
+            self._handle_llm_error(e)
             return None
 
 
@@ -165,7 +168,8 @@ class OpenRouterClient(BaseLLMClient):
             json_response = response.json()
             result = json_response["choices"][0]["message"]["content"]
             return result
-        except Exception:
+        except Exception as e:
+            self._handle_llm_error(e)
             return None
 
 

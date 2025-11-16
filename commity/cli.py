@@ -10,7 +10,7 @@ from rich.rule import Rule
 
 from commity.config import get_llm_config
 from commity.core import generate_prompt, get_git_diff
-from commity.llm import llm_client_factory
+from commity.llm import LLMGenerationError, llm_client_factory
 from commity.utils.prompt_organizer import (
     count_tokens,
     summary_and_tokens_checker,
@@ -18,10 +18,54 @@ from commity.utils.prompt_organizer import (
 from commity.utils.spinner import spinner
 
 
+def _split_commit_message(commit_msg: str) -> list[str]:
+    lines = [line.rstrip() for line in commit_msg.strip().splitlines()]
+    paragraphs: list[str] = []
+    block: list[str] = []
+
+    for line in lines:
+        if not line.strip():
+            if block:
+                paragraphs.append("\n".join(block).strip())
+                block = []
+            continue
+        block.append(line)
+
+    if block:
+        paragraphs.append("\n".join(block).strip())
+
+    return paragraphs or [commit_msg.strip()]
+
+
+def _build_commit_command(commit_msg: str) -> list[str]:
+    paragraphs = _split_commit_message(commit_msg)
+    command = ["git", "commit"]
+    for paragraph in paragraphs:
+        command.extend(["-m", paragraph])
+    return command
+
+
+def _enforce_subject_limit(commit_msg: str, max_subject_chars: int | None) -> str:
+    if not max_subject_chars or max_subject_chars <= 0:
+        return commit_msg
+
+    lines = commit_msg.splitlines()
+    if not lines:
+        return commit_msg
+
+    subject = lines[0].strip()
+    if len(subject) <= max_subject_chars:
+        return commit_msg
+
+    truncated = subject[:max_subject_chars].rstrip()
+    lines[0] = truncated
+    return "\n".join(lines).strip()
+
+
 def _run_commit(commit_msg: str) -> bool:
     try:
         subprocess.run(
-            ["git", "commit", "-m", commit_msg], check=True, capture_output=True, text=True
+            _build_commit_command(commit_msg), check=True, capture_output=True, text=True
         )
         print(
             Panel(
@@ -65,12 +109,20 @@ def main() -> None:
     parser.add_argument("--base_url", type=str, help="LLM base URL")
     parser.add_argument("--model", type=str, help="LLM model name")
     parser.add_argument("--api_key", type=str, help="LLM API key")
-    parser.add_argument("--language", type=str, default="en", help="Language for commit message")
+    parser.add_argument(
+        "--language",
+        "--lang",
+        dest="language",
+        type=str,
+        default="en",
+        help="Language for commit message",
+    )
     parser.add_argument("--temperature", type=float, help="Temperature for generation")
     parser.add_argument("--max_tokens", type=int, help="Max tokens for LLM response generation")
     parser.add_argument(
         "--max_subject_chars",
         type=int,
+        default=50,
         help="Max characters for the generated commit message (subject)",
     )
     parser.add_argument("--timeout", type=int, help="Timeout in seconds")
@@ -138,23 +190,33 @@ def main() -> None:
         with spinner("🚀 Generating commit message..."):
             commit_msg = client.generate(prompt)
         if commit_msg:
-            # TODO Post-process: Truncate commit message if it exceeds max_subject_chars
+            commit_msg = _enforce_subject_limit(commit_msg.strip(), args.max_subject_chars)
 
             print(Rule("[bold green] Suggested Commit Message[/bold green]"))
             print(Markdown(commit_msg))
             print(Rule(style="green"))
+            should_commit = True
             if args.confirm == "y":
-                # confirm_input = input("Do you want to commit with this message? (y/N): ")
                 confirm_input = Prompt.ask(
-                    "Do you want to commit with this message?", choices=["y", "n"], default="n"
+                    "Do you want to commit with this message?", choices=["y", "n"], default="y"
                 )
-                if confirm_input.lower() == "y":
-                    if _run_commit(commit_msg):
-                        push_input = Prompt.ask(
-                            "Do you want to push changes?", choices=["y", "n"], default="n"
-                        )
-                        if push_input.lower() == "y":
-                            _run_push()
+                should_commit = confirm_input.lower() == "y"
+
+            if should_commit:
+                if _run_commit(commit_msg):
+                    push_input = Prompt.ask(
+                        "Do you want to push changes?", choices=["y", "n"], default="n"
+                    )
+                    if push_input.lower() == "y":
+                        _run_push()
+            else:
+                print(
+                    Panel(
+                        "[bold yellow]Commit aborted by user confirmation.[/bold yellow]",
+                        title="[bold yellow]Cancelled[/bold yellow]",
+                        border_style="yellow",
+                    )
+                )
         else:
             print(
                 Panel(
@@ -163,6 +225,22 @@ def main() -> None:
                     border_style="red",
                 )
             )
+    except LLMGenerationError as e:
+        from rich.markup import escape
+
+        details = []
+        if e.status_code is not None:
+            details.append(f"Status: {e.status_code}")
+        if e.details:
+            details.append(e.details.strip())
+        error_message = escape("\n".join(details) or str(e))
+        print(
+            Panel(
+                "❌ LLM request failed:\n" + error_message,
+                title="Error",
+                border_style="red",
+            )
+        )
     except Exception as e:
         from rich.markup import escape
 

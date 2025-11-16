@@ -37,6 +37,7 @@ uv tool install commity
 `commity` 支持通过三种方式进行配置，优先级从高到低依次为：**命令行参数 > 环境变量 > 配置文件**。
 
 支持的模型提供商有：`Gemini` (默认)、`Ollama`、`OpenAI`、`OpenRouter`。
+> 使用 Gemini、OpenAI、OpenRouter 时必须提供 API Key，Commity 会在请求前校验，缺失时立即终止以便快速发现问题。
 
 ### ✨ 方法一：运行命令时指定模型参数
 
@@ -173,8 +174,8 @@ commity
 # 查看帮助
 commity --help
 
-# 使用中文
-commity --lang zh
+# 使用中文（`--lang` 仍可作为别名）
+commity --language zh
 
 # 包含 emoji
 commity --emoji
@@ -184,5 +185,11 @@ commity --provider openrouter --model anthropic/claude-3.5-sonnet --api_key <you
 
 # 使用 OpenRouter 并包含 emoji
 commity --provider openrouter --model openai/gpt-4o --api_key <your-openrouter-api-key> --emoji
+
+# 跳过交互确认并直接提交
+commity --confirm n
+
+# 通过模块入口运行
+python -m commity --language zh --emoji
 
 ```
