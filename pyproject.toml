@@ -36,6 +36,9 @@ dev = [
     "hatch>=1.14.1",
     "mypy>=1.17.1",
     "pre-commit>=4.3.0",
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
+    "pytest-mock>=3.15.1",
     "ruff>=0.12.8",
     "twine>=6.1.0",
     "types-requests>=2.32.4.20250809",
@@ -70,7 +73,9 @@ lint = "ruff check ."
 fix = "ruff check --fix ."
 check = "ruff check . && ruff format --check ."
 typecheck = "mypy ."
-test = "python -m pytest"
+test = "pytest"
+test-cov = "pytest --cov --cov-report=html --cov-report=term"
+test-verbose = "pytest -v"
 build = "hatch build"
 clean = "hatch clean"
 
@@ -112,40 +117,40 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "D", "UP", "ANN", "ASYNC", "B", "C4", "DTZ", "ERA", "ISC", "ICN", "PIE", "PT", "RSE", "RET", "SLF", "TCH", "PTH", "SIM", "ARG", "BLE", "FBT", "PERF", "RUF"]
 ignore = [
-    "D100",  # Missing docstring in public module
-    "D104",  # Missing docstring in public package
-    "D105",  # Missing docstring in magic method
-    "D107",  # Missing docstring in __init__
-    "ANN002",  # Missing-type-args
-    "ANN003",  # Missing-type-kwargs
-    "ANN401",  # Dynamically-typed-expression
-    "RUF001",  # Ambiguous-unicode-character-string
-    "RUF002",  # Ambiguous-unicode-character-docstring
-    "RUF003",  # Ambiguous-unicode-character-comment
-    "E501",  # Line too long (handled by formatter)
-    "C901",  # Function is too complex
-    "D103",  # Missing docstring in public function
-    "D101",  # Missing docstring in public class
-    "D102",  # Missing docstring in public method
-    "D401",  # First line of docstring should be in imperative mood
-    "D205",  # 1 blank line required between summary line and description
-    "D400",  # First line should end with a period
-    "D415",  # First line should end with a period, question mark, or exclamation point
-    "ANN201",  # Missing return type annotation for public function
-    "ANN202",  # Missing return type annotation for private function
-    "ANN204",  # Missing return type annotation for special method
-    "ANN001",  # Missing type annotation for function argument
-    "ANN101",  # Missing type annotation for self in method
-    "BLE001",  # Do not catch blind exception
-    "FBT001",  # Boolean-typed positional argument in function definition
-    "FBT002",  # Boolean default positional argument in function definition
-    "RET504",  # Unnecessary assignment to variable before return statement
-    "SIM102",  # Use a single if statement instead of nested if statements
-    "ERA001",  # Found commented-out code
-    "PTH111",  # os.path.expanduser() should be replaced by Path.expanduser()
-    "PTH110",  # os.path.exists() should be replaced by Path.exists()
-    "PTH123",  # open() should be replaced by Path.open()
-    "UP022",  # Prefer capture_output over sending stdout and stderr to PIPE
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D105", # Missing docstring in magic method
+    "D107", # Missing docstring in __init__
+    "ANN002", # Missing-type-args
+    "ANN003", # Missing-type-kwargs
+    "ANN401", # Dynamically-typed-expression
+    "RUF001", # Ambiguous-unicode-character-string
+    "RUF002", # Ambiguous-unicode-character-docstring
+    "RUF003", # Ambiguous-unicode-character-comment
+    "E501", # Line too long (handled by formatter)
+    "C901", # Function is too complex
+    "D103", # Missing docstring in public function
+    "D101", # Missing docstring in public class
+    "D102", # Missing docstring in public method
+    "D401", # First line of docstring should be in imperative mood
+    "D205", # 1 blank line required between summary line and description
+    "D400", # First line should end with a period
+    "D415", # First line should end with a period, question mark, or exclamation point
+    "ANN201", # Missing return type annotation for public function
+    "ANN202", # Missing return type annotation for private function
+    "ANN204", # Missing return type annotation for special method
+    "ANN001", # Missing type annotation for function argument
+    "ANN101", # Missing type annotation for self in method
+    "BLE001", # Do not catch blind exception
+    "FBT001", # Boolean-typed positional argument in function definition
+    "FBT002", # Boolean default positional argument in function definition
+    "RET504", # Unnecessary assignment to variable before return statement
+    "SIM102", # Use a single if statement instead of nested if statements
+    "ERA001", # Found commented-out code
+    "PTH111", # os.path.expanduser() should be replaced by Path.expanduser()
+    "PTH110", # os.path.exists() should be replaced by Path.exists()
+    "PTH123", # open() should be replaced by Path.open()
+    "UP022", # Prefer capture_output over sending stdout and stderr to PIPE
 ]
 
 [tool.ruff.format]
