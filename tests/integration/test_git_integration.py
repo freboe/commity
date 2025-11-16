@@ -10,7 +10,7 @@ from commity.core import get_git_diff
 from .conftest import is_git_available
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 @pytest.mark.skipif(not is_git_available(), reason="Git is not available")
 class TestGitIntegration:
     """Integration tests for real Git operations."""

@@ -12,8 +12,8 @@ from commity.llm import llm_client_factory
 from .conftest import is_git_available, is_ollama_available
 
 
-@pytest.mark.integration()
-@pytest.mark.slow()
+@pytest.mark.integration
+@pytest.mark.slow
 @pytest.mark.skipif(
     not (is_git_available() and is_ollama_available()),
     reason="Requires both Git and Ollama",
@@ -79,11 +79,11 @@ class TestEndToEnd:
             pytest.skip("Model returned empty response")
 
         # Should look like a commit (relaxed check)
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("Generated Commit Message:")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(commit_message)
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
     def test_workflow_with_config_loading(self, temp_git_repo: Path):
         """Test workflow with configuration loading from args."""
@@ -221,7 +221,7 @@ class TestEndToEnd:
         print(f"\n[Modification Commit]:\n{commit_message}")
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 class TestEndToEndWithoutOllama:
     """E2E tests that work without Ollama (error handling tests)."""
 

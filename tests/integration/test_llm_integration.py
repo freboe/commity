@@ -9,8 +9,8 @@ from commity.llm import OllamaClient, llm_client_factory
 from .conftest import is_ollama_available
 
 
-@pytest.mark.integration()
-@pytest.mark.slow()
+@pytest.mark.integration
+@pytest.mark.slow
 @pytest.mark.skipif(not is_ollama_available(), reason="Ollama is not running")
 class TestOllamaIntegration:
     """Integration tests for Ollama client with real API calls."""
@@ -206,8 +206,8 @@ index 1234567..abcdefg 100644
             print(f"\n[Empty Prompt Response]: {response}")
 
 
-@pytest.mark.integration()
-@pytest.mark.slow()
+@pytest.mark.integration
+@pytest.mark.slow
 class TestLLMIntegrationWithoutOllama:
     """Integration tests that don't require Ollama to be running."""
 

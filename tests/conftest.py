@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_config_file(tmp_path: Path) -> Path:
     """Create a temporary config file for testing."""
     config_dir = tmp_path / ".commity"
@@ -15,7 +15,7 @@ def temp_config_file(tmp_path: Path) -> Path:
     return config_file
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_config_data() -> dict[str, Any]:
     """Sample configuration data."""
     return {
@@ -28,7 +28,7 @@ def sample_config_data() -> dict[str, Any]:
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_git_diff() -> str:
     """Sample git diff output."""
     return """diff --git a/commity/config.py b/commity/config.py
@@ -45,7 +45,7 @@ index 1234567..abcdefg 100644
 """
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_llm_response() -> str:
     """Sample LLM response."""
     return "feat(config): Add type hints to config module"

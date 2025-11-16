@@ -29,7 +29,7 @@ def is_git_available() -> bool:
         return False
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_git_repo(tmp_path: Path) -> Generator[Path, None, None]:
     """Create a temporary git repository for testing."""
     repo_dir = tmp_path / "test_repo"
@@ -74,7 +74,7 @@ def temp_git_repo(tmp_path: Path) -> Generator[Path, None, None]:
         os.chdir(original_dir)
 
 
-@pytest.fixture()
+@pytest.fixture
 def ollama_config() -> LLMConfig:
     """Create a config for Ollama testing."""
     return LLMConfig(
@@ -87,7 +87,7 @@ def ollama_config() -> LLMConfig:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_diff() -> str:
     """Sample git diff for testing."""
     return """diff --git a/src/utils.py b/src/utils.py

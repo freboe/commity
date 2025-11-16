@@ -16,12 +16,12 @@ from commity.llm.openai import OpenAIClient
 from commity.llm.openrouter import OpenRouterClient
 
 __all__ = [
-    "BaseLLMClient",
-    "LLMGenerationError",
     "LLM_CLIENTS",
-    "llm_client_factory",
+    "BaseLLMClient",
     "GeminiClient",
+    "LLMGenerationError",
     "OllamaClient",
     "OpenAIClient",
     "OpenRouterClient",
+    "llm_client_factory",
 ]

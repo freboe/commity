@@ -35,12 +35,12 @@ Tracker = "https://github.com/freboe/commity/issues"
 [dependency-groups]
 dev = [
     "hatch>=1.14.1",
-    "mypy>=1.17.1",
+    "mypy>=1.18.2",
     "pre-commit>=4.3.0",
     "pytest>=9.0.1",
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.15.1",
-    "ruff>=0.12.8",
+    "ruff>=0.14.5",
     "twine>=6.1.0",
     "types-requests>=2.32.4.20250809",
 ]
@@ -62,9 +62,9 @@ dependencies = [
     "rich>=13.7.1",
     "hatch>=1.14.1",
     "pre-commit>=4.3.0",
-    "ruff>=0.12.8",
+    "ruff>=0.14.5",
     "twine>=6.1.0",
-    "mypy>=1.8.0",
+    "mypy>=1.18.2",
     "types-requests>=2.31.0",
 ]
 
@@ -122,6 +122,8 @@ ignore = [
     "D104", # Missing docstring in public package
     "D105", # Missing docstring in magic method
     "D107", # Missing docstring in __init__
+    "D203", # Incompatible with D211 (no-blank-line-before-class)
+    "D213", # Incompatible with D212 (multi-line-summary-first-line)
     "ANN002", # Missing-type-args
     "ANN003", # Missing-type-kwargs
     "ANN401", # Dynamically-typed-expression
@@ -141,7 +143,6 @@ ignore = [
     "ANN202", # Missing return type annotation for private function
     "ANN204", # Missing return type annotation for special method
     "ANN001", # Missing type annotation for function argument
-    "ANN101", # Missing type annotation for self in method
     "BLE001", # Do not catch blind exception
     "FBT001", # Boolean-typed positional argument in function definition
     "FBT002", # Boolean default positional argument in function definition

@@ -196,7 +196,7 @@ def main() -> None:
             should_commit = True
             if args.confirm == "y":
                 confirm_input = Prompt.ask(
-                    "Do you want to commit with this message?", choices=["y", "n"], default="y"
+                    "Do you want to commit with this message?", choices=["y", "n"], default="n"
                 )
                 should_commit = confirm_input.lower() == "y"
 
@@ -223,6 +223,14 @@ def main() -> None:
                     border_style="red",
                 )
             )
+    except (EOFError, KeyboardInterrupt):
+        print(
+            Panel(
+                "[bold yellow]Operation cancelled by user.[/bold yellow]",
+                title="[bold yellow]Cancelled[/bold yellow]",
+                border_style="yellow",
+            )
+        )
     except LLMGenerationError as e:
         from rich.markup import escape
 
