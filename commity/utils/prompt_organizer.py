@@ -1,8 +1,7 @@
 import re
-from functools import lru_cache
 from typing import Final
 
-import tiktoken
+from commity.utils.token_counter import count_tokens
 
 # Constants
 MAX_DIFF_LENGTH: Final[int] = 15000
@@ -45,28 +44,26 @@ def compress_diff_to_bullets(diff_text, max_lines=MAX_COMPRESSED_LINES):
     return "\n".join(compressed)
 
 
-@lru_cache(maxsize=10)
-def get_tokenizer(model_name: str):
-    try:
-        return tiktoken.encoding_for_model(model_name)
-    except KeyError:
-        return tiktoken.get_encoding("cl100k_base")
-
-
-def count_tokens(text: str, model_name: str):
-    tokenizer = get_tokenizer(model_name)
-    return len(tokenizer.encode(text))
-
-
-def summary_and_tokens_checker(diff_text: str, max_output_tokens: int, model_name: str):
+def summary_and_tokens_checker(
+    diff_text: str, max_output_tokens: int, model_name: str, provider: str = "openai"
+) -> str:
     """添加总结和压缩版本的diff，构建有效长度的tokens的提示词语，避免过长导致模型生成失败
-    :param diff_text:
-    :param max_output_tokens:
-    :return:
+
+    Args:
+    ----
+        diff_text: Git diff text to check
+        max_output_tokens: Maximum tokens allowed
+        model_name: Model name for token counting
+        provider: LLM provider (openai, gemini, ollama, openrouter)
+
+    Returns:
+    -------
+        Original or compressed diff text that fits within token limit
+
     """
     max_user_tokens = max_output_tokens * 1
 
-    token_count = count_tokens(diff_text, model_name)
+    token_count = count_tokens(diff_text, model_name, provider)
     if token_count <= max_user_tokens:
         return diff_text
 
@@ -80,10 +77,10 @@ def summary_and_tokens_checker(diff_text: str, max_output_tokens: int, model_nam
     final_prompt = original_prompt
 
     # 再次检查 token 数量，如果仍然过长，则进一步截断
-    if count_tokens(final_prompt, model_name) > max_user_tokens:
+    if count_tokens(final_prompt, model_name, provider) > max_user_tokens:
         # 简单截断，保留开头部分
         # 计算需要截断的字符数
-        current_tokens = count_tokens(final_prompt, model_name)
+        current_tokens = count_tokens(final_prompt, model_name, provider)
         excess_tokens = current_tokens - max_user_tokens
         # 估算每个 token 对应的字符数，这里简单假设一个 token 约等于 4 个字符（对于英文）
         # 这是一个粗略的估算，实际应根据具体模型和语言调整

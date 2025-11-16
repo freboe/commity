@@ -11,11 +11,9 @@ from rich.rule import Rule
 from commity.config import get_llm_config
 from commity.core import generate_prompt, get_git_diff
 from commity.llm import LLMGenerationError, llm_client_factory
-from commity.utils.prompt_organizer import (
-    count_tokens,
-    summary_and_tokens_checker,
-)
+from commity.utils.prompt_organizer import summary_and_tokens_checker
 from commity.utils.spinner import spinner
+from commity.utils.token_counter import count_tokens
 
 
 def _split_commit_message(commit_msg: str) -> list[str]:
@@ -172,11 +170,11 @@ def main() -> None:
         type_=args.type,
         max_subject_chars=args.max_subject_chars,
     )
-    system_prompt_tokens = count_tokens(base_prompt, config.model)
+    system_prompt_tokens = count_tokens(base_prompt, config.model, config.provider)
 
     diff_token_budget = max(config.max_tokens - system_prompt_tokens, 100)
     diff = summary_and_tokens_checker(
-        diff, max_output_tokens=diff_token_budget, model_name=config.model
+        diff, max_output_tokens=diff_token_budget, model_name=config.model, provider=config.provider
     )
 
     prompt = generate_prompt(
