@@ -55,8 +55,8 @@ def _enforce_subject_limit(commit_msg: str, max_subject_chars: int | None) -> st
     if len(subject) <= max_subject_chars:
         return commit_msg
 
-    truncated = subject[:max_subject_chars].rstrip()
-    lines[0] = truncated
+    # truncated = subject[:max_subject_chars].rstrip()
+    # lines[0] = truncated
     return "\n".join(lines).strip()
 
 
