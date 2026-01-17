@@ -8,6 +8,7 @@ from commity.config import LLMConfig
 from commity.llm import (
     GeminiClient,
     LLMGenerationError,
+    NvidiaClient,
     OllamaClient,
     OpenAIClient,
     OpenRouterClient,
@@ -281,6 +282,35 @@ class TestOpenRouterClient:
         assert result == "test commit message"
 
 
+class TestNvidiaClient:
+    """Tests for NvidiaClient."""
+
+    def test_default_values(self):
+        """Test default base_url and model."""
+        assert NvidiaClient.default_base_url == "https://integrate.api.nvidia.com"
+        assert NvidiaClient.default_model == "nvidia/llama-3.1-70b-instruct"
+
+    @patch("commity.llm.nvidia.NvidiaClient._make_request")
+    def test_generate_success(self, mock_make_request):
+        """Test successful generation."""
+        config = LLMConfig(
+            provider="nvidia",
+            base_url="https://integrate.api.nvidia.com",
+            model="nvidia/llama-3.1-70b-instruct",
+            api_key="test-key",
+        )
+        client = NvidiaClient(config)
+
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": "test commit message"}}]
+        }
+        mock_make_request.return_value = mock_response
+
+        result = client.generate("test prompt")
+        assert result == "test commit message"
+
+
 class TestLLMClientFactory:
     """Tests for llm_client_factory."""
 
@@ -326,6 +356,17 @@ class TestLLMClientFactory:
         )
         client = llm_client_factory(config)
         assert isinstance(client, OpenRouterClient)
+
+    def test_factory_nvidia(self):
+        """Test factory creates NvidiaClient."""
+        config = LLMConfig(
+            provider="nvidia",
+            base_url="https://integrate.api.nvidia.com",
+            model="nvidia/llama-3.1-70b-instruct",
+            api_key="test-key",
+        )
+        client = llm_client_factory(config)
+        assert isinstance(client, NvidiaClient)
 
     def test_factory_unsupported_provider(self):
         """Test factory with unsupported provider."""

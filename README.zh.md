@@ -36,8 +36,8 @@ uv tool install commity
 
 `commity` 支持通过三种方式进行配置，优先级从高到低依次为：**命令行参数 > 环境变量 > 配置文件**。
 
-支持的模型提供商有：`Gemini` (默认)、`Ollama`、`OpenAI`、`OpenRouter`。
-> 使用 Gemini、OpenAI、OpenRouter 时必须提供 API Key，Commity 会在请求前校验，缺失时立即终止以便快速发现问题。
+支持的模型提供商有：`Gemini` (默认)、`Ollama`、`OpenAI`、`OpenRouter`、`NVIDIA`。
+> 使用 Gemini、OpenAI、OpenRouter、NVIDIA 时必须提供 API Key，Commity 会在请求前校验，缺失时立即终止以便快速发现问题。
 
 ### ✨ 方法一：运行命令时指定模型参数
 
@@ -68,6 +68,36 @@ commity \
 --base_url https://generativelanguage.googleapis.com \
 --api_key <your-api-key> \
 --timeout 30
+```
+
+#### OpenRouter
+
+```Bash
+commity --provider openrouter --model openai/gpt-3.5-turbo --api_key <your-openrouter-api-key>
+```
+
+or
+
+```Bash
+commity \
+--provider openrouter \
+--model anthropic/claude-3.5-sonnet \
+--api_key <your-openrouter-api-key>
+```
+
+#### NVIDIA
+
+```Bash
+commity --provider nvidia --model nvidia/llama-3.1-70b-instruct --api_key <your-nvidia-api-key>
+```
+
+or
+
+```Bash
+commity \
+--provider nvidia \
+--model nvidia/llama-3.1-nemotron-70b-instruct \
+--api_key <your-nvidia-api-key>
 ```
 
 ### 🌱 方法二：设置环境变量作为默认值
@@ -106,6 +136,15 @@ export COMMITY_TEMPERATURE=0.5
 export COMMITY_PROVIDER=openrouter
 export COMMITY_MODEL=openai/gpt-3.5-turbo
 export COMMITY_API_KEY=your-openrouter-api-key
+export COMMITY_TEMPERATURE=0.5
+```
+
+#### NVIDIA
+
+```Bash
+export COMMITY_PROVIDER=nvidia
+export COMMITY_MODEL=nvidia/llama-3.1-70b-instruct
+export COMMITY_API_KEY=your-nvidia-api-key
 export COMMITY_TEMPERATURE=0.5
 ```
 
@@ -166,6 +205,16 @@ export COMMITY_TEMPERATURE=0.5
    }
    ```
 
+   或者使用 NVIDIA：
+
+   ```json
+   {
+     "PROVIDER": "nvidia",
+     "MODEL": "nvidia/llama-3.1-70b-instruct",
+     "API_KEY": "your-nvidia-api-key"
+   }
+   ```
+
 ## 🚀 使用
 
 ```Bash
@@ -185,6 +234,12 @@ commity --provider openrouter --model anthropic/claude-3.5-sonnet --api_key <you
 
 # 使用 OpenRouter 并包含 emoji
 commity --provider openrouter --model openai/gpt-4o --api_key <your-openrouter-api-key> --emoji
+
+# 使用 NVIDIA 指定模型
+commity --provider nvidia --model nvidia/llama-3.1-70b-instruct --api_key <your-nvidia-api-key>
+
+# 使用 NVIDIA 并包含 emoji
+commity --provider nvidia --model nvidia/llama-3.1-nemotron-70b-instruct --api_key <your-nvidia-api-key> --emoji
 
 # 跳过交互确认并直接提交
 commity --confirm n

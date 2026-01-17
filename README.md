@@ -37,8 +37,8 @@ uv tool install commity
 `commity` supports three configuration methods, with the following priority: **Command-line Arguments > Environment
 Variables > Configuration File**.
 
-Supported model providers are: `Gemini` (default), `Ollama`, `OpenAI`, `OpenRouter`.
-> Gemini, OpenAI, and OpenRouter always require an API key. Commity aborts early if those keys are missing so you get fast feedback before hitting the network.
+Supported model providers are: `Gemini` (default), `Ollama`, `OpenAI`, `OpenRouter`, `NVIDIA`.
+> Gemini, OpenAI, OpenRouter, and NVIDIA always require an API key. Commity aborts early if those keys are missing so you get fast feedback before hitting the network.
 
 ### ✨ Method 1: Specify Model Parameters via Command-line
 
@@ -86,6 +86,21 @@ commity \
 --api_key <your-openrouter-api-key> \
 ```
 
+#### NVIDIA
+
+```Bash
+commity --provider nvidia --model nvidia/llama-3.1-70b-instruct --api_key <your-nvidia-api-key>
+```
+
+or
+
+```Bash
+commity \
+--provider nvidia \
+--model nvidia/llama-3.1-nemotron-70b-instruct \
+--api_key <your-nvidia-api-key> \
+```
+
 ### 🌱 Method 2: Set Environment Variables as Defaults
 
 You can add the following to your `.bashrc`, `.zshrc`, or `.env` file:
@@ -122,6 +137,15 @@ export COMMITY_TEMPERATURE=0.5
 export COMMITY_PROVIDER=openrouter
 export COMMITY_MODEL=openai/gpt-3.5-turbo
 export COMMITY_API_KEY=your-openrouter-api-key
+export COMMITY_TEMPERATURE=0.5
+```
+
+#### NVIDIA
+
+```Bash
+export COMMITY_PROVIDER=nvidia
+export COMMITY_MODEL=nvidia/llama-3.1-70b-instruct
+export COMMITY_API_KEY=your-nvidia-api-key
 export COMMITY_TEMPERATURE=0.5
 ```
 
@@ -182,6 +206,16 @@ For easier configuration management, you can create a `~/.commity/config.json` f
    }
    ```
 
+   Or using NVIDIA:
+
+   ```json
+   {
+     "PROVIDER": "nvidia",
+     "MODEL": "nvidia/llama-3.1-70b-instruct",
+     "API_KEY": "your-nvidia-api-key"
+   }
+   ```
+
 ## 🚀 Usage
 
 ```Bash
@@ -202,6 +236,12 @@ commity --provider openrouter --model anthropic/claude-3.5-sonnet --api_key <you
 
 # Use OpenRouter with emoji support
 commity --provider openrouter --model openai/gpt-4o --api_key <your-openrouter-api-key> --emoji
+
+# Use NVIDIA with specific model
+commity --provider nvidia --model nvidia/llama-3.1-70b-instruct --api_key <your-nvidia-api-key>
+
+# Use NVIDIA with emoji support
+commity --provider nvidia --model nvidia/llama-3.1-nemotron-70b-instruct --api_key <your-nvidia-api-key> --emoji
 
 # Skip interactive confirmation and commit immediately
 commity --confirm n

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from commity.llm.base import BaseLLMClient
 from commity.llm.gemini import GeminiClient
+from commity.llm.nvidia import NvidiaClient
 from commity.llm.ollama import OllamaClient
 from commity.llm.openai import OpenAIClient
 from commity.llm.openrouter import OpenRouterClient
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
 
 LLM_CLIENTS = {
     "gemini": GeminiClient,
+    "nvidia": NvidiaClient,
     "ollama": OllamaClient,
     "openai": OpenAIClient,
     "openrouter": OpenRouterClient,

@@ -124,6 +124,24 @@ class TestLLMConfig:
                 model="qwen/qwen3-coder:free",
             )
 
+    def test_api_key_required_for_nvidia(self):
+        """Test that API key is required for NVIDIA."""
+        with pytest.raises(ValidationError, match="API key must be specified"):
+            LLMConfig(
+                provider="nvidia",
+                base_url="https://integrate.api.nvidia.com/v1",
+                model="nvidia/llama-3.1-70b-instruct",
+            )
+
+        # Should work with API key
+        config = LLMConfig(
+            provider="nvidia",
+            base_url="https://integrate.api.nvidia.com/v1",
+            model="nvidia/llama-3.1-70b-instruct",
+            api_key="test-key",
+        )
+        assert config.api_key == "test-key"
+
     def test_api_key_not_required_for_ollama(self):
         """Test that API key is not required for Ollama."""
         config = LLMConfig(

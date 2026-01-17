@@ -11,6 +11,7 @@ To add a new provider:
 from commity.llm.base import BaseLLMClient, LLMGenerationError
 from commity.llm.factory import LLM_CLIENTS, llm_client_factory
 from commity.llm.gemini import GeminiClient
+from commity.llm.nvidia import NvidiaClient
 from commity.llm.ollama import OllamaClient
 from commity.llm.openai import OpenAIClient
 from commity.llm.openrouter import OpenRouterClient
@@ -20,6 +21,7 @@ __all__ = [
     "BaseLLMClient",
     "GeminiClient",
     "LLMGenerationError",
+    "NvidiaClient",
     "OllamaClient",
     "OpenAIClient",
     "OpenRouterClient",

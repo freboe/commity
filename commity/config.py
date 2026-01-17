@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from commity.llm import LLM_CLIENTS, BaseLLMClient
 
-PROVIDERS_REQUIRING_API_KEY = {"gemini", "openai", "openrouter"}
+PROVIDERS_REQUIRING_API_KEY = {"gemini", "nvidia", "openai", "openrouter"}
 
 
 def load_config_from_file() -> dict[str, Any]:
