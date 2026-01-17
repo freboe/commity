@@ -11,6 +11,7 @@ from rich.rule import Rule
 from commity.config import get_llm_config
 from commity.core import generate_prompt, get_git_diff
 from commity.llm import LLMGenerationError, llm_client_factory
+from commity.utils.commit_cleaner import clean_thinking_process
 from commity.utils.prompt_organizer import summary_and_tokens_checker
 from commity.utils.spinner import spinner
 from commity.utils.token_counter import count_tokens
@@ -188,7 +189,8 @@ def main() -> None:
         with spinner("🚀 Generating commit message..."):
             commit_msg = client.generate(prompt)
         if commit_msg:
-            commit_msg = _enforce_subject_limit(commit_msg.strip(), args.max_subject_chars)
+            commit_msg = clean_thinking_process(commit_msg.strip())
+            commit_msg = _enforce_subject_limit(commit_msg, args.max_subject_chars)
 
             print(Rule("[bold green] Suggested Commit Message[/bold green]"))
             print(Markdown(commit_msg))
