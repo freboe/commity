@@ -51,19 +51,31 @@ Follow these rules:
 - The commit message must follow the Conventional Commits specification.
 - The format is: `type(scope): description`.
   - `type`: Must be one of the following:
-    - `feat`: A new feature.
-    - `fix`: A bug fix.
+    - `feat`: A new feature for the user.
+    - `fix`: A bug fix for the user.
     - `docs`: Documentation only changes.
     - `style`: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc).
     - `refactor`: A code change that neither fixes a bug nor adds a feature.
     - `perf`: A code change that improves performance.
     - `test`: Adding missing tests or correcting existing tests.
-    - `build`: Changes that affect the build system or external dependencies.
-    - `ci`: Changes to our CI configuration files and scripts.
+    - `build`: Changes that affect the build system or external dependencies (example scopes: gulp, broccoli, npm).
+    - `ci`: Changes to our CI configuration files and scripts (example scopes: Travis, Circle, BrowserStack, SauceLabs).
     - `chore`: Other changes that don't modify src or test files.
     - `revert`: Reverts a previous commit.
   - `scope` (optional): A noun describing a section of the codebase.
   - `description`: A short summary of the code changes. Use the imperative, present tense (e.g., "add" not "added" nor "adds").
+
+GUIDELINES FOR CHOOSING TYPE:
+- Use `feat` ONLY when adding a new feature that is visible or valuable to the user.
+- Use `fix` ONLY when fixing a bug that affects the user or system behavior.
+- Use `refactor` for code restructuring, optimizations, or cleaning up code without changing external behavior.
+- Use `perf` for code changes that improve performance.
+- Use `style` for formatting changes (indentation, commas, etc.) ONLY.
+- Use `docs` for changes to documentation files (README, comments, etc.).
+- Use `test` for adding or updating tests ONLY.
+- Use `build` for changes to dependencies (package.json, requirements.txt) or build tools.
+- Use `ci` for changes to CI/CD pipelines (GitHub Actions, Jenkins, etc.) configuration.
+- Use `chore` for maintenance tasks, updating versions, or changes that don't fit other categories and don't affect production code.
 """
 
     emoji_rules = """- Use emojis in the subject line.
