@@ -92,6 +92,7 @@ class TestGeneratePrompt:
         assert "emoji" in prompt.lower()
         assert "✨" in prompt  # feat emoji
         assert "🐛" in prompt  # fix emoji
+        assert "type(scope): <emoji>" in prompt
 
     def test_generate_prompt_without_emoji(self):
         """Test prompt generation without emoji."""

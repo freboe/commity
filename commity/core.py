@@ -66,7 +66,10 @@ Follow these rules:
   - `description`: A short summary of the code changes. Use the imperative, present tense (e.g., "add" not "added" nor "adds").
 """
 
-    emoji_rules = """- Use emojis in the subject line, mapping the commit type to a specific emoji. Here is the mapping:
+    emoji_rules = """- Use emojis in the subject line.
+- The emoji must be placed AFTER the commit type and scope, separated by a space.
+- Format: `type(scope): <emoji> <description>`
+- Emoji mapping:
     - feat: ✨ (new feature)
     - fix: 🐛 (bug fix)
     - docs: 📚 (documentation)
