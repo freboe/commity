@@ -205,7 +205,7 @@ class TestGetLLMConfig:
             assert config.provider == "gemini"  # default
             assert config.temperature == 0.3
             assert config.max_tokens == 3000
-            assert config.timeout == 60
+            assert config.timeout == 90
 
     def test_config_from_args(self):
         """Test config from command line arguments."""

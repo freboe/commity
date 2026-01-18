@@ -32,7 +32,7 @@ class LLMConfig(BaseModel):
         default=0.3, ge=0.0, le=1.0, description="Temperature for generation"
     )
     max_tokens: int = Field(default=3000, gt=0, description="Maximum tokens for response")
-    timeout: int = Field(default=60, gt=0, description="Request timeout in seconds")
+    timeout: int = Field(default=90, gt=0, description="Request timeout in seconds")
     proxy: str | None = Field(default=None, description="Proxy URL")
     debug: bool = Field(default=False, description="Enable debug mode")
 
@@ -94,7 +94,7 @@ def get_llm_config(args: Any) -> LLMConfig:
     api_key = _resolve_config("api_key", args, file_config, None)
     temperature = _resolve_config("temperature", args, file_config, 0.3, float)
     max_tokens = _resolve_config("max_tokens", args, file_config, 3000, int)
-    timeout = _resolve_config("timeout", args, file_config, 60, int)
+    timeout = _resolve_config("timeout", args, file_config, 90, int)
     proxy = _resolve_config("proxy", args, file_config, None)
     debug = file_config.get("DEBUG", False)
 
