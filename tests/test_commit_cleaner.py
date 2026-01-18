@@ -68,3 +68,9 @@ class TestCleanThinkingProcess:
         """Test with empty input."""
         assert clean_thinking_process("") == ""
         assert clean_thinking_process(None) is None
+
+    def test_clean_thinking_process_custom_type(self):
+        """Test removing thinking process with custom commit type."""
+        msg = """<think>planning</think>
+    infra: update terraform"""
+        assert clean_thinking_process(msg) == "infra: update terraform"

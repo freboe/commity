@@ -24,7 +24,7 @@ def clean_thinking_process(commit_msg: str) -> str:
     # Check for Conventional Commit format (e.g., feat: ..., fix(scope): ...)
     # If found, discard any preceding "thinking process" or analysis text.
     convention_pattern = re.compile(
-        r"^\s*(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)"
+        r"^\s*\w+"
         r"(\([\w\-\./]+\))?(!)?: .+",
         re.IGNORECASE | re.MULTILINE,
     )
