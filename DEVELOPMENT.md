@@ -9,12 +9,14 @@
 make setup
 # 或者手动执行：
 uv sync --group dev
-uv run pre-commit install
+# 安装 pre-commit 钩子
+uv run pre-commit install --hook-type pre-commit --hook-type pre-push
 ```
 
 ### 2. 配置编辑器
 
 项目已经配置了 VS Code 设置，包括：
+
 - 自动格式化（保存时）
 - Ruff 代码检查
 - MyPy 类型检查 (uv add --group dev mypy types-requests)
@@ -47,11 +49,14 @@ make typecheck
 
 ### 提交前检查
 
-项目配置了 pre-commit 钩子，会在每次提交时自动运行：
-- 代码格式化
-- 代码质量检查
-- 类型检查
-- 文件格式检查
+项目配置了 pre-commit 和 pre-push 钩子：
+
+- **Pre-commit (提交时)**:
+  - 自动运行代码格式化和 Lint 检查 (Ruff)
+  - 运行单元测试 (忽略 `tests/integration`)，确保基础逻辑正确
+  - 文件格式检查
+- **Pre-push (推送时)**:
+  - 运行**所有**测试 (包含集成测试)，确保代码完整性以及不破坏现有功能
 
 ```bash
 # 手动运行 pre-commit 检查
@@ -134,6 +139,7 @@ make pre-commit-run
 ### VS Code
 
 项目包含 VS Code 配置：
+
 - 自动格式化（保存时）
 - Ruff 集成
 - MyPy 集成
@@ -142,6 +148,7 @@ make pre-commit-run
 ### 其他编辑器
 
 对于其他编辑器，请确保：
+
 1. 使用 Ruff 作为格式化工具
 2. 启用保存时自动格式化
 3. 配置行长度为 100 字符
@@ -149,9 +156,11 @@ make pre-commit-run
 ## 提交规范
 
 项目使用 pre-commit 钩子确保代码质量：
+
 1. 代码会自动格式化
 2. 导入会自动排序
 3. 类型错误会被检查
 4. 文件格式会被验证
+5. 单元测试必须通过
 
 如果提交失败，请运行 `make fix` 修复问题后重新提交。
