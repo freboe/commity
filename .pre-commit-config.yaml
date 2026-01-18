@@ -26,6 +26,21 @@ repos:
         language: system
         types: [python]
         args: [--check]
+      - id: pytest-fast
+        name: pytest (fast - unit tests)
+        entry: uv run pytest
+        args: ["--ignore=tests/integration"]
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: pytest-full
+        name: pytest (full - all tests)
+        entry: uv run pytest
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
 
   # Temporarily disabled due to network issues
   # - repo: https://github.com/pre-commit/mirrors-mypy
