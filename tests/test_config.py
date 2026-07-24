@@ -2,6 +2,7 @@
 
 import json
 import os
+from typing import ClassVar
 
 # from pathlib import Path
 from unittest.mock import patch
@@ -33,6 +34,8 @@ class TestLLMConfig:
         assert config.temperature == 0.2  # default
         assert config.max_tokens == 512  # default
         assert config.context_window_tokens == 32768
+        assert config.allow_tools is False
+        assert config.allowed_tools is None
 
     def test_config_with_all_fields(self):
         """Test creating config with all fields."""
@@ -46,6 +49,8 @@ class TestLLMConfig:
             timeout=30,
             proxy="http://proxy:8080",
             debug=True,
+            allow_tools=True,
+            allowed_tools=["read_file", "get_commit"],
         )
         assert config.provider == "openai"
         assert config.api_key == "test-key"
@@ -54,6 +59,17 @@ class TestLLMConfig:
         assert config.timeout == 30
         assert config.proxy == "http://proxy:8080"
         assert config.debug is True
+        assert config.allow_tools is True
+        assert config.allowed_tools == ["read_file", "get_commit"]
+
+    def test_rejects_unknown_repository_tools(self):
+        with pytest.raises(ValidationError, match="Unknown repository tools: write_file"):
+            LLMConfig(
+                provider="ollama",
+                base_url="http://localhost:11434",
+                model="llama3",
+                allowed_tools=["read_file", "write_file"],
+            )
 
     def test_temperature_validation(self):
         """Test temperature range validation."""
@@ -213,6 +229,8 @@ class TestGetLLMConfig:
             assert config.max_tokens == 512
             assert config.context_window_tokens == 1_000_000
             assert config.timeout == 90
+            assert config.allow_tools is False
+            assert config.allowed_tools is None
 
     def test_config_from_args(self):
         """Test config from command line arguments."""
@@ -227,6 +245,8 @@ class TestGetLLMConfig:
             context_window_tokens = 16384
             timeout = 45
             proxy = "http://proxy:8080"
+            allow_tools = True
+            allowed_tools: ClassVar = ["read_file", "get_commit"]
 
         with (
             patch("commity.config.load_config_from_file", return_value={}),
@@ -241,6 +261,8 @@ class TestGetLLMConfig:
             assert config.context_window_tokens == 16384
             assert config.timeout == 45
             assert config.proxy == "http://proxy:8080"
+            assert config.allow_tools is True
+            assert config.allowed_tools == ["read_file", "get_commit"]
 
     def test_config_from_env(self):
         """Test config from environment variables."""
@@ -265,6 +287,8 @@ class TestGetLLMConfig:
             "COMMITY_CONTEXT_WINDOW_TOKENS": "8192",
             "COMMITY_DEBUG": "true",
             "COMMITY_TIMEOUT": "50",
+            "COMMITY_ALLOW_TOOLS": "true",
+            "COMMITY_ALLOWED_TOOLS": "read_file, get_staged_diff",
         }
 
         with (
@@ -280,6 +304,8 @@ class TestGetLLMConfig:
             assert config.context_window_tokens == 8192
             assert config.debug is True
             assert config.timeout == 50
+            assert config.allow_tools is True
+            assert config.allowed_tools == ["read_file", "get_staged_diff"]
 
     def test_config_priority_args_over_env(self):
         """Test that args have priority over environment variables."""

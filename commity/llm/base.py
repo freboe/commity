@@ -8,6 +8,7 @@ import requests
 
 if TYPE_CHECKING:
     from commity.config import LLMConfig
+    from commity.repository_tools import ReadOnlyRepositoryTools
 
 
 class LLMGenerationError(Exception):
@@ -83,3 +84,8 @@ class BaseLLMClient(ABC):
     @abstractmethod
     def generate(self, prompt: str) -> str | None:
         raise NotImplementedError
+
+    def generate_with_tools(
+        self, prompt: str, _repository_tools: "ReadOnlyRepositoryTools"
+    ) -> str | None:
+        return self.generate(prompt)

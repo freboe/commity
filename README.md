@@ -40,6 +40,11 @@ Variables > Configuration File**.
 Supported model providers are: `Gemini` (default), `Ollama`, `OpenAI`, `OpenRouter`, `NVIDIA`.
 > Gemini, OpenAI, OpenRouter, and NVIDIA always require an API key. Commity aborts early if those keys are missing so you get fast feedback before hitting the network.
 
+Model repository tools are disabled by default. Set `ALLOW_TOOLS` to `true` to let a
+tool-capable provider inspect staged changes, commit history, and tracked files. If
+`ALLOWED_TOOLS` is omitted, every built-in read-only tool is available. Valid names are
+`get_staged_summary`, `get_staged_diff`, `list_recent_commits`, `get_commit`, and `read_file`.
+
 ### ✨ Method 1: Specify Model Parameters via Command-line
 
 #### OpenAI
@@ -104,6 +109,11 @@ commity \
 ### 🌱 Method 2: Set Environment Variables as Defaults
 
 You can add the following to your `.bashrc`, `.zshrc`, or `.env` file:
+
+```Bash
+export COMMITY_ALLOW_TOOLS=true
+export COMMITY_ALLOWED_TOOLS=get_staged_diff,read_file
+```
 
 #### OpenAI
 
@@ -192,7 +202,9 @@ For easier configuration management, you can create a `~/.commity/config.json` f
    {
      "PROVIDER": "openai",
      "MODEL": "gpt-3.5-turbo",
-     "API_KEY": "your-openai-api-key"
+     "API_KEY": "your-openai-api-key",
+     "ALLOW_TOOLS": true,
+     "ALLOWED_TOOLS": ["get_staged_diff", "read_file"]
    }
    ```
 
@@ -236,6 +248,13 @@ commity --context_window_tokens 8192
 
 # Show token budgeting, compression, and change-group diagnostics
 commity --debug
+
+# Allow all read-only repository tools (OpenAI provider)
+commity --provider openai --api_key <your-api-key> --allow_tools
+
+# Allow only selected repository tools
+commity --provider openai --api_key <your-api-key> \
+  --allow_tools --allowed_tools get_staged_diff read_file
 
 # Use OpenRouter with specific model
 commity --provider openrouter --model anthropic/claude-3.5-sonnet --api_key <your-openrouter-api-key>

@@ -39,6 +39,11 @@ uv tool install commity
 支持的模型提供商有：`Gemini` (默认)、`Ollama`、`OpenAI`、`OpenRouter`、`NVIDIA`。
 > 使用 Gemini、OpenAI、OpenRouter、NVIDIA 时必须提供 API Key，Commity 会在请求前校验，缺失时立即终止以便快速发现问题。
 
+模型仓库工具默认关闭。将 `ALLOW_TOOLS` 设为 `true` 后，支持工具调用的 provider
+可以读取暂存变更、提交历史和 tracked 文件。未配置 `ALLOWED_TOOLS` 时允许使用全部
+内置只读工具。有效名称为 `get_staged_summary`、`get_staged_diff`、
+`list_recent_commits`、`get_commit` 和 `read_file`。
+
 ### ✨ 方法一：运行命令时指定模型参数
 
 #### OpenAI
@@ -103,6 +108,11 @@ commity \
 ### 🌱 方法二：设置环境变量作为默认值
 
 你可以在 `.bashrc`、`.zshrc` 或 `.env` 文件中添加：
+
+```Bash
+export COMMITY_ALLOW_TOOLS=true
+export COMMITY_ALLOWED_TOOLS=get_staged_diff,read_file
+```
 
 #### OpenAI
 
@@ -191,7 +201,9 @@ export COMMITY_TEMPERATURE=0.5
    {
      "PROVIDER": "openai",
      "MODEL": "gpt-3.5-turbo",
-     "API_KEY": "your-openai-api-key"
+     "API_KEY": "your-openai-api-key",
+     "ALLOW_TOOLS": true,
+     "ALLOWED_TOOLS": ["get_staged_diff", "read_file"]
    }
    ```
 
@@ -234,6 +246,13 @@ commity --context_window_tokens 8192
 
 # 显示 token 预算、压缩和变更分组诊断
 commity --debug
+
+# 允许全部只读仓库工具（OpenAI provider）
+commity --provider openai --api_key <your-api-key> --allow_tools
+
+# 只允许指定仓库工具
+commity --provider openai --api_key <your-api-key> \
+  --allow_tools --allowed_tools get_staged_diff read_file
 
 # 使用 OpenRouter 指定模型
 commity --provider openrouter --model anthropic/claude-3.5-sonnet --api_key <your-openrouter-api-key>

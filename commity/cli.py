@@ -25,6 +25,7 @@ from commity.core import (
     get_repository_context,
 )
 from commity.llm import LLMGenerationError, llm_client_factory
+from commity.repository_tools import ReadOnlyRepositoryTools
 from commity.utils.prompt_organizer import summary_and_tokens_checker
 from commity.utils.spinner import spinner
 from commity.utils.token_counter import count_tokens
@@ -148,6 +149,10 @@ def _show_commit_message(commit_msg: str) -> None:
     print(Rule(style="green"))
 
 
+def _show_tool_use(tool_name: str) -> None:
+    print(f"[cyan]🔍 Model is using repository tool:[/cyan] [bold]{tool_name}[/bold]")
+
+
 def main() -> None:
     try:
         version = metadata.version("commity")
@@ -190,6 +195,17 @@ def main() -> None:
         action="store_true",
         default=None,
         help="Show prompt budgeting and diff compression diagnostics",
+    )
+    parser.add_argument(
+        "--allow_tools",
+        action="store_true",
+        default=None,
+        help="Allow the model to inspect the repository with read-only tools",
+    )
+    parser.add_argument(
+        "--allowed_tools",
+        nargs="+",
+        help="Read-only repository tools available to the model",
     )
     parser.add_argument(
         "--confirm",
@@ -248,6 +264,11 @@ def main() -> None:
                 return
 
     repository_context = get_repository_context()
+    repository_tools = (
+        ReadOnlyRepositoryTools(config.allowed_tools, on_tool_use=_show_tool_use)
+        if config.allow_tools
+        else None
+    )
     base_prompt = generate_prompt(
         "",
         language=args.language,
@@ -305,7 +326,10 @@ def main() -> None:
             )
             try:
                 with spinner("🚀 Generating commit message..."):
-                    raw_message = client.generate(prompt)
+                    if repository_tools is None:
+                        raw_message = client.generate(prompt)
+                    else:
+                        raw_message = client.generate_with_tools(prompt, repository_tools)
             except LLMGenerationError as error:
                 if not context_retry_used and _is_context_overflow(error):
                     reduced_budget = max(

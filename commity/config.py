@@ -2,9 +2,10 @@ import json
 import os
 from typing import Any, cast
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from commity.llm import LLM_CLIENTS, BaseLLMClient
+from commity.repository_tools import REPOSITORY_TOOL_NAMES
 
 PROVIDERS_REQUIRING_API_KEY = {"gemini", "nvidia", "openai", "openrouter"}
 
@@ -28,6 +29,12 @@ def _parse_bool(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _parse_tools(value: Any) -> list[str] | None:
+    if value is None or isinstance(value, list):
+        return value
+    return [name.strip() for name in str(value).split(",") if name.strip()]
 
 
 def load_config_from_file() -> dict[str, Any]:
@@ -59,6 +66,21 @@ class LLMConfig(BaseModel):
     timeout: int = Field(default=90, gt=0, description="Request timeout in seconds")
     proxy: str | None = Field(default=None, description="Proxy URL")
     debug: bool = Field(default=False, description="Enable debug mode")
+    allow_tools: bool = Field(default=False, description="Allow model repository tool use")
+    allowed_tools: list[str] | None = Field(
+        default=None,
+        description="Repository tools available to the model; null enables all tools",
+    )
+
+    @field_validator("allowed_tools")
+    @classmethod
+    def validate_allowed_tools(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return value
+        unknown = set(value) - set(REPOSITORY_TOOL_NAMES)
+        if unknown:
+            raise ValueError(f"Unknown repository tools: {', '.join(sorted(unknown))}")
+        return list(dict.fromkeys(value))
 
     @model_validator(mode="after")
     def validate_api_key_for_provider(self) -> "LLMConfig":
@@ -128,6 +150,12 @@ def get_llm_config(args: Any) -> LLMConfig:
     timeout = _resolve_config("timeout", args, file_config, 90, int)
     proxy = _resolve_config("proxy", args, file_config, None)
     debug = _resolve_config("debug", args, file_config, default=False, type_cast=_parse_bool)
+    allow_tools = _resolve_config(
+        "allow_tools", args, file_config, default=False, type_cast=_parse_bool
+    )
+    allowed_tools = _resolve_config(
+        "allowed_tools", args, file_config, default=None, type_cast=_parse_tools
+    )
 
     # Pydantic will automatically validate all fields when creating the instance
     config = LLMConfig(
@@ -141,6 +169,8 @@ def get_llm_config(args: Any) -> LLMConfig:
         timeout=timeout,
         proxy=proxy,
         debug=debug,
+        allow_tools=allow_tools,
+        allowed_tools=allowed_tools,
     )
 
     return config
