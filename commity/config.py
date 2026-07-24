@@ -9,6 +9,27 @@ from commity.llm import LLM_CLIENTS, BaseLLMClient
 PROVIDERS_REQUIRING_API_KEY = {"gemini", "nvidia", "openai", "openrouter"}
 
 
+def infer_context_window_tokens(model: str) -> int:
+    """Return a conservative context window for common model families."""
+    name = model.lower()
+    capabilities = (
+        (("gemini-2.5", "gemini-1.5", "gpt-4.1"), 1_000_000),
+        (("claude",), 200_000),
+        (("gpt-4o", "llama-3.1", "llama3.1", "llama-3.2", "llama3.2"), 128_000),
+        (("gpt-3.5",), 16_000),
+    )
+    for patterns, context_window in capabilities:
+        if any(pattern in name for pattern in patterns):
+            return context_window
+    return 32_768
+
+
+def _parse_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
 def load_config_from_file() -> dict[str, Any]:
     config_path = os.path.expanduser("~/.commity/config.json")
     if os.path.exists(config_path):
@@ -29,9 +50,9 @@ class LLMConfig(BaseModel):
     model: str = Field(..., description="Model name to use")
     api_key: str | None = Field(default=None, description="API key for authentication")
     temperature: float = Field(
-        default=0.3, ge=0.0, le=1.0, description="Temperature for generation"
+        default=0.2, ge=0.0, le=1.0, description="Temperature for generation"
     )
-    max_tokens: int = Field(default=3000, gt=0, description="Maximum tokens for response")
+    max_tokens: int = Field(default=512, gt=0, description="Maximum tokens for response")
     context_window_tokens: int = Field(
         default=32768, gt=0, description="Maximum tokens accepted by the model context window"
     )
@@ -95,12 +116,18 @@ def get_llm_config(args: Any) -> LLMConfig:
     base_url = _resolve_config("base_url", args, file_config, default_base_url)
     model = _resolve_config("model", args, file_config, default_model)
     api_key = _resolve_config("api_key", args, file_config, None)
-    temperature = _resolve_config("temperature", args, file_config, 0.3, float)
-    max_tokens = _resolve_config("max_tokens", args, file_config, 3000, int)
-    context_window_tokens = _resolve_config("context_window_tokens", args, file_config, 32768, int)
+    temperature = _resolve_config("temperature", args, file_config, 0.2, float)
+    max_tokens = _resolve_config("max_tokens", args, file_config, 512, int)
+    context_window_tokens = _resolve_config(
+        "context_window_tokens",
+        args,
+        file_config,
+        infer_context_window_tokens(model),
+        int,
+    )
     timeout = _resolve_config("timeout", args, file_config, 90, int)
     proxy = _resolve_config("proxy", args, file_config, None)
-    debug = file_config.get("DEBUG", False)
+    debug = _resolve_config("debug", args, file_config, default=False, type_cast=_parse_bool)
 
     # Pydantic will automatically validate all fields when creating the instance
     config = LLMConfig(

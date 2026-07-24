@@ -1,6 +1,7 @@
 """Base classes and exceptions for LLM clients."""
 
 from abc import ABC, abstractmethod
+from time import sleep
 from typing import TYPE_CHECKING
 
 import requests
@@ -23,6 +24,7 @@ class BaseLLMClient(ABC):
 
     default_base_url: str = ""
     default_model: str = ""
+    max_attempts: int = 3
 
     def __init__(self, config: "LLMConfig") -> None:
         self.config = config
@@ -34,6 +36,9 @@ class BaseLLMClient(ABC):
 
     def _handle_llm_error(self, e: Exception, response: requests.Response | None = None) -> None:
         """统一处理 LLM 相关的错误。"""
+        if isinstance(e, LLMGenerationError):
+            raise e
+
         error_message = str(e)
         status_code = None
         details = None
@@ -47,23 +52,33 @@ class BaseLLMClient(ABC):
 
     def _make_request(self, url: str, payload: dict, headers: dict) -> requests.Response:
         """通用的请求方法，处理所有客户端的共同逻辑。"""
-        try:
-            response = requests.post(
-                url,
-                json=payload,
-                headers=headers,
-                timeout=self.config.timeout,
-                proxies=self._get_proxies(),
-            )
-            if response.status_code != 200:
-                self._handle_llm_error(ValueError("Non-200 status code"), response)
-            response.raise_for_status()
-            return response
-        except Exception as e:
-            self._handle_llm_error(e)
-            # This line should never be reached because _handle_llm_error always raises
-            # But we need it for mypy to satisfy the return type
-            raise  # Re-raise the exception that was already raised in _handle_llm_error
+        for attempt in range(self.max_attempts):
+            try:
+                response = requests.post(
+                    url,
+                    json=payload,
+                    headers=headers,
+                    timeout=self.config.timeout,
+                    proxies=self._get_proxies(),
+                )
+            except requests.RequestException as error:
+                if attempt + 1 == self.max_attempts:
+                    self._handle_llm_error(error)
+                sleep(0.5 * 2**attempt)
+                continue
+            except Exception as error:
+                self._handle_llm_error(error)
+
+            if response.status_code == 200:
+                return response
+            if (response.status_code == 429 or response.status_code >= 500) and (
+                attempt + 1 < self.max_attempts
+            ):
+                sleep(0.5 * 2**attempt)
+                continue
+            self._handle_llm_error(ValueError("Non-200 status code"), response)
+
+        raise LLMGenerationError("LLM request failed after retries")
 
     @abstractmethod
     def generate(self, prompt: str) -> str | None:

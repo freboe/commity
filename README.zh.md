@@ -229,6 +229,12 @@ commity --language zh
 # 包含 emoji
 commity --emoji
 
+# 为上下文较小的本地模型指定上下文窗口
+commity --context_window_tokens 8192
+
+# 显示 token 预算、压缩和变更分组诊断
+commity --debug
+
 # 使用 OpenRouter 指定模型
 commity --provider openrouter --model anthropic/claude-3.5-sonnet --api_key <your-openrouter-api-key>
 
@@ -248,3 +254,9 @@ commity --confirm n
 python -m commity --language zh --emoji
 
 ```
+
+交互模式下可以选择：`c` 提交、`e` 使用 Git 编辑器修改消息、`r`
+携带可选补充要求重新生成、`n` 取消。Commity 会结合项目描述、近期
+commit subject 和暂存文件信息，提高生成结果与项目用途的一致性。
+当代码、构建、CI 和文档变更可能相互独立时，Commity 会在生成一条
+合并消息前提示用户考虑拆分 commit。

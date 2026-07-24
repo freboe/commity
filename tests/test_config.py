@@ -9,7 +9,12 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from commity.config import LLMConfig, get_llm_config, load_config_from_file
+from commity.config import (
+    LLMConfig,
+    get_llm_config,
+    infer_context_window_tokens,
+    load_config_from_file,
+)
 
 
 class TestLLMConfig:
@@ -25,8 +30,8 @@ class TestLLMConfig:
         assert config.provider == "ollama"
         assert config.base_url == "http://localhost:11434"
         assert config.model == "llama3"
-        assert config.temperature == 0.3  # default
-        assert config.max_tokens == 3000  # default
+        assert config.temperature == 0.2  # default
+        assert config.max_tokens == 512  # default
         assert config.context_window_tokens == 32768
 
     def test_config_with_all_fields(self):
@@ -204,8 +209,9 @@ class TestGetLLMConfig:
         ):
             config = get_llm_config(Args())
             assert config.provider == "gemini"  # default
-            assert config.temperature == 0.3
-            assert config.max_tokens == 3000
+            assert config.temperature == 0.2
+            assert config.max_tokens == 512
+            assert config.context_window_tokens == 1_000_000
             assert config.timeout == 90
 
     def test_config_from_args(self):
@@ -257,6 +263,7 @@ class TestGetLLMConfig:
             "COMMITY_TEMPERATURE": "0.6",
             "COMMITY_MAX_TOKENS": "2500",
             "COMMITY_CONTEXT_WINDOW_TOKENS": "8192",
+            "COMMITY_DEBUG": "true",
             "COMMITY_TIMEOUT": "50",
         }
 
@@ -271,6 +278,7 @@ class TestGetLLMConfig:
             assert config.temperature == 0.6
             assert config.max_tokens == 2500
             assert config.context_window_tokens == 8192
+            assert config.debug is True
             assert config.timeout == 50
 
     def test_config_priority_args_over_env(self):
@@ -300,3 +308,17 @@ class TestGetLLMConfig:
             assert config.provider == "ollama"  # from args
             assert config.base_url == "http://args:11434"  # from args
             assert config.model == "env-model"  # from env
+
+
+@pytest.mark.parametrize(
+    ("model", "expected"),
+    [
+        ("gemini-2.5-flash", 1_000_000),
+        ("gpt-4o-mini", 128_000),
+        ("claude-3.5-sonnet", 200_000),
+        ("gpt-3.5-turbo", 16_000),
+        ("unknown-model", 32_768),
+    ],
+)
+def test_infer_context_window_tokens(model, expected):
+    assert infer_context_window_tokens(model) == expected

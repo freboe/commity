@@ -3,7 +3,7 @@
 import subprocess
 from unittest.mock import Mock, patch
 
-from commity.core import generate_prompt, get_git_diff
+from commity.core import generate_prompt, get_git_diff, get_repository_context
 
 
 class TestGetGitDiff:
@@ -74,7 +74,7 @@ class TestGeneratePrompt:
 
         assert "Git Diff:" in prompt
         assert diff in prompt
-        assert "commit message" in prompt
+        assert "JSON object" in prompt
         assert "primary observable behavior" in prompt
         assert "tests as evidence of intended behavior" in prompt
 
@@ -92,9 +92,8 @@ class TestGeneratePrompt:
         prompt = generate_prompt(diff, emoji=True)
 
         assert "emoji" in prompt.lower()
-        assert "✨" in prompt  # feat emoji
-        assert "🐛" in prompt  # fix emoji
-        assert "type(scope): <emoji>" in prompt
+        assert "program will add the correct emoji" in prompt
+        assert "Do not include an emoji in the JSON subject" in prompt
 
     def test_generate_prompt_without_emoji(self):
         """Test prompt generation without emoji."""
@@ -102,8 +101,6 @@ class TestGeneratePrompt:
         prompt = generate_prompt(diff, emoji=False)
 
         assert "Do not include emojis" in prompt
-        # Should not have emoji mapping
-        assert "✨" not in prompt
 
     def test_generate_prompt_conventional_type(self):
         """Test prompt generation with conventional commits."""
@@ -111,8 +108,8 @@ class TestGeneratePrompt:
         prompt = generate_prompt(diff, type_="conventional")
 
         assert "Conventional Commits" in prompt
-        assert "feat:" in prompt
-        assert "fix:" in prompt
+        assert "`feat`" in prompt
+        assert "`fix`" in prompt
         assert "type(scope): description" in prompt
 
     def test_generate_prompt_custom_max_subject_chars(self):
@@ -120,7 +117,8 @@ class TestGeneratePrompt:
         diff = "diff --git a/test.py b/test.py\n+print('hello')"
         prompt = generate_prompt(diff, max_subject_chars=72)
 
-        assert "≤72 characters" in prompt
+        assert "72 characters" in prompt
+        assert "JSON subject field within 52 characters" in prompt
 
     def test_generate_prompt_all_options(self):
         """Test prompt generation with all options."""
@@ -136,7 +134,7 @@ class TestGeneratePrompt:
         assert "zh" in prompt
         assert "emoji" in prompt.lower()
         assert "Conventional Commits" in prompt
-        assert "≤60 characters" in prompt
+        assert "60 characters" in prompt
         assert diff in prompt
 
     def test_generate_prompt_empty_diff(self):
@@ -166,3 +164,23 @@ index 1234567..abcdefg 100644
         assert diff in prompt
         assert "import sys" in prompt
         assert "print('new')" in prompt
+
+    def test_generate_prompt_with_repository_context_and_guidance(self):
+        prompt = generate_prompt(
+            "diff",
+            repository_context="Project: commity",
+            guidance="Focus on validation",
+        )
+
+        assert "Repository Context:\nProject: commity" in prompt
+        assert "Additional User Guidance:\nFocus on validation" in prompt
+
+
+class TestRepositoryContext:
+    """Tests for compact repository context collection."""
+
+    @patch("commity.core._run_git")
+    def test_returns_empty_context_when_git_fails(self, mock_git):
+        mock_git.side_effect = subprocess.CalledProcessError(128, ["git"])
+
+        assert get_repository_context() == ""

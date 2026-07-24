@@ -176,7 +176,7 @@ def extract_hunk_context(hunk) -> str:
 
 def extract_ordered_hunk_changes(hunk, max_lines: int = MAX_LINES_PER_HUNK) -> list[str]:
     """Extract changed lines while preserving their original diff order."""
-    changes = []
+    changes: list[str] = []
     for line in hunk:
         if len(changes) >= max_lines:
             break

@@ -231,6 +231,12 @@ commity --language zh
 # Include emojis
 commity --emoji
 
+# Override the model context window for smaller local models
+commity --context_window_tokens 8192
+
+# Show token budgeting, compression, and change-group diagnostics
+commity --debug
+
 # Use OpenRouter with specific model
 commity --provider openrouter --model anthropic/claude-3.5-sonnet --api_key <your-openrouter-api-key>
 
@@ -248,3 +254,11 @@ commity --confirm n
 
 # Run via Python module entry point
 python -m commity --language zh --emoji
+```
+
+In interactive mode, choose `c` to commit, `e` to edit the generated
+message in your Git editor, `r` to regenerate it with optional guidance,
+or `n` to cancel. Commity uses the repository description, recent commit
+subjects, and staged-file metadata to improve the generated message.
+When code, build, CI, and documentation changes appear independently,
+Commity warns before generating one combined message.

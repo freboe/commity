@@ -1,4 +1,5 @@
 import subprocess
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,6 +45,59 @@ def detect_change_groups(diff: str) -> list[ChangeGroup]:
     return result
 
 
+def _run_git(args: list[str]) -> str:
+    result = subprocess.run(
+        ["git", *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+def get_repository_context() -> str:
+    """Collect compact repository facts that improve commit message accuracy."""
+    try:
+        root = Path(_run_git(["rev-parse", "--show-toplevel"]))
+        sections = []
+
+        pyproject = root / "pyproject.toml"
+        if pyproject.exists():
+            with pyproject.open("rb") as file:
+                project = tomllib.load(file).get("project", {})
+            name = project.get("name")
+            description = project.get("description")
+            if name or description:
+                sections.append(
+                    f"Project: {name or root.name}\nPurpose: {description or 'unknown'}"
+                )
+
+        readme = next(
+            (path for path in (root / "README.md", root / "README.rst") if path.exists()),
+            None,
+        )
+        if readme:
+            excerpt = readme.read_text(encoding="utf-8", errors="replace")[:800].strip()
+            if excerpt:
+                sections.append("README excerpt:\n" + excerpt)
+
+        history = _run_git(["log", "-n", "12", "--format=%s"])
+        if history:
+            sections.append("Recent commit subjects:\n" + history)
+
+        name_status = _run_git(["diff", "--staged", "--name-status"])
+        stat = _run_git(["diff", "--staged", "--stat"])
+        if name_status:
+            sections.append("Staged files:\n" + name_status)
+        if stat:
+            sections.append("Change statistics:\n" + stat)
+
+        return "\n\n".join(sections)
+    except (OSError, subprocess.CalledProcessError, tomllib.TOMLDecodeError):
+        return ""
+
+
 def get_git_diff() -> str:
     try:
         result = subprocess.run(
@@ -69,26 +123,29 @@ def generate_prompt(
     emoji: bool = True,
     type_: str = "conventional",
     max_subject_chars: int = 50,
+    repository_context: str = "",
+    guidance: str = "",
 ) -> str:
+    description_char_budget = max(max_subject_chars - 20, 10)
     base_rules = f"""You are a Git commit message generator. Generate a commit message in {language} based on the provided Git diff.
 
-CRITICAL: Your response must contain ONLY the commit message text. Do NOT include:
+CRITICAL: Return ONLY one JSON object with this schema:
+{{"type":"fix","scope":"optional-scope","subject":"imperative description","body":["optional detail"],"breaking":false}}
+
+Do NOT include:
 - Any thinking process, analysis, or reasoning
 - Phrases like "Let me analyze", "Looking at", "This appears to be", "Let me craft", "I'll focus on"
 - Any explanation of your thought process
 - Any preamble, introduction, or conclusion
 - Any markdown formatting or code blocks
 
-Start your response directly with the commit message. The first line should be the commit subject line.
-
 Follow these rules:
-- First line (title) should briefly summarize the change in ≤{max_subject_chars} characters, starting with a type prefix, no period at the end.
-    - Type prefix must be lowercase.
-    - Separate subject from body with a blank line.
+- The rendered subject, including type, scope, and emoji, must not exceed {max_subject_chars} characters.
+- Return the subject description without the type, scope, emoji, or final period.
+- Keep the JSON subject field within {description_char_budget} characters.
 - The body (optional) should provide more details, with each line not exceeding 72 characters.
-- A footer (optional) can be used for `BREAKING CHANGE` or referencing issues (e.g., `Closes #123`).
-- The output must be plain text, without any markdown syntax (e.g., no ` ``` `, `*`, `-`, etc.).
-- Output the commit message directly, without any preamble or explanation."""
+- Use an empty string for scope when no scope is justified.
+- Set breaking to true only for a breaking API or behavior change."""
 
     conventional_rules = """
 - The commit message must follow the Conventional Commits specification.
@@ -130,21 +187,8 @@ GUIDELINES FOR IDENTIFYING THE CHANGE:
   use the body for important supporting changes.
 """
 
-    emoji_rules = """- Use emojis in the subject line.
-- The emoji must be placed AFTER the commit type and scope, separated by a space.
-- Format: `type(scope): <emoji> <description>`
-- Emoji mapping:
-    - feat: ✨ (new feature)
-    - fix: 🐛 (bug fix)
-    - docs: 📚 (documentation)
-    - style: 💎 (code style)
-    - refactor: 🔨 (code refactoring)
-    - perf: 🚀 (performance improvement)
-    - test: 🚨 (tests)
-    - build: 📦 (build system)
-    - ci: 👷 (CI/CD)
-    - chore: 🔧 (chores)
-    - revert: ⏪ (revert)
+    emoji_rules = """- The program will add the correct emoji after parsing the JSON.
+- Do not include an emoji in the JSON subject.
 """
 
     no_emoji_rule = "- Do not include emojis.\n"
@@ -159,11 +203,23 @@ GUIDELINES FOR IDENTIFYING THE CHANGE:
     else:
         prompt_parts.append(no_emoji_rule)
 
+    if repository_context:
+        prompt_parts.append(f"""
+Repository Context:
+{repository_context}
+""")
+
+    if guidance:
+        prompt_parts.append(f"""
+Additional User Guidance:
+{guidance}
+""")
+
     prompt_parts.append(f"""
 Git Diff:
 {diff}
 
-Remember: Output ONLY the commit message. No thinking, no analysis, no explanation. Start directly with the commit subject line.
+Remember: Output ONLY the JSON object. No thinking, analysis, or markdown.
 """)
 
     return "".join(prompt_parts)

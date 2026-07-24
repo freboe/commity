@@ -101,15 +101,38 @@ class TestBaseLLMClient:
             model="llama3",
         )
         client = OllamaClient(config)
+        client.max_attempts = 1
 
         mock_response = Mock()
         mock_response.status_code = 500
         mock_response.text = "Error"
         mock_post.return_value = mock_response
 
-        with pytest.raises(LLMGenerationError):
+        with pytest.raises(LLMGenerationError) as exc_info:
             client._make_request(  # noqa: SLF001
                 "http://test/api",
                 {"model": "test"},
                 {"Content-Type": "application/json"},
             )
+
+        assert exc_info.value.status_code == 500
+        assert exc_info.value.details == "Error"
+
+    @patch("commity.llm.base.sleep")
+    @patch("commity.llm.base.requests.post")
+    def test_make_request_retries_transient_status(self, mock_post, mock_sleep):
+        config = LLMConfig(
+            provider="ollama",
+            base_url="http://localhost:11434",
+            model="llama3",
+        )
+        client = OllamaClient(config)
+        unavailable = Mock(status_code=503, text="Unavailable")
+        success = Mock(status_code=200)
+        mock_post.side_effect = [unavailable, success]
+
+        response = client._make_request("http://test/api", {}, {})  # noqa: SLF001
+
+        assert response is success
+        assert mock_post.call_count == 2
+        mock_sleep.assert_called_once_with(0.5)
