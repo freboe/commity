@@ -24,6 +24,7 @@ dependencies = [
     "rich>=13.7.1",
     "pydantic>=2.12.4",
     "unidiff>=0.7.5",
+    "json-with-comments>=1.2.10",
 ]
 
 [project.urls]
