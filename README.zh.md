@@ -160,7 +160,9 @@ export COMMITY_TEMPERATURE=0.5
 
 ### 📝 方法三：使用配置文件（推荐）
 
-为了更方便地管理配置，你可以在用户主目录下创建 `~/.commity/config.json` 文件。
+为了更方便地管理配置，可以在用户主目录下创建 `~/.commity/config.jsonc` 或
+`~/.commity/config.json`。JSONC 支持行注释、块注释和尾逗号；两者同时存在时，
+优先读取 `config.jsonc`。
 
 1. 创建目录：
 
@@ -168,13 +170,13 @@ export COMMITY_TEMPERATURE=0.5
    mkdir -p ~/.commity
    ```
 
-2. 创建并编辑 `config.json` 文件：
+2. 创建并编辑 `config.jsonc` 文件：
 
    ```bash
-   touch ~/.commity/config.json
+   touch ~/.commity/config.jsonc
    ```
 
-3. 在 `config.json` 中添加你的配置，例如：
+3. 在 `config.jsonc` 中添加你的配置，例如：
 
    ```json
    {

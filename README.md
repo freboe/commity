@@ -161,7 +161,9 @@ export COMMITY_TEMPERATURE=0.5
 
 ### 📝 Method 3: Use a Configuration File (Recommended)
 
-For easier configuration management, you can create a `~/.commity/config.json` file in your user's home directory.
+For easier configuration management, create either `~/.commity/config.jsonc` or
+`~/.commity/config.json` in your user's home directory. JSONC supports line comments,
+block comments, and trailing commas. If both files exist, `config.jsonc` takes priority.
 
 1. Create the directory:
 
@@ -169,13 +171,13 @@ For easier configuration management, you can create a `~/.commity/config.json` f
    mkdir -p ~/.commity
    ```
 
-2. Create and edit the `config.json` file:
+2. Create and edit the `config.jsonc` file:
 
    ```bash
-   touch ~/.commity/config.json
+   touch ~/.commity/config.jsonc
    ```
 
-3. Add your configuration to `config.json`, for example:
+3. Add your configuration to `config.jsonc`, for example:
 
    ```json
    {

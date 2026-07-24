@@ -37,12 +37,94 @@ def _parse_tools(value: Any) -> list[str] | None:
     return [name.strip() for name in str(value).split(",") if name.strip()]
 
 
+def _strip_jsonc(content: str) -> str:
+    without_comments: list[str] = []
+    index = 0
+    in_string = False
+    escaped = False
+
+    while index < len(content):
+        char = content[index]
+        next_char = content[index + 1] if index + 1 < len(content) else ""
+
+        if in_string:
+            without_comments.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            index += 1
+            continue
+
+        if char == '"':
+            in_string = True
+            without_comments.append(char)
+            index += 1
+        elif char == "/" and next_char == "/":
+            without_comments.extend((" ", " "))
+            index += 2
+            while index < len(content) and content[index] not in "\r\n":
+                without_comments.append(" ")
+                index += 1
+        elif char == "/" and next_char == "*":
+            comment_start = index
+            without_comments.extend((" ", " "))
+            index += 2
+            while index < len(content) - 1 and content[index : index + 2] != "*/":
+                without_comments.append(content[index] if content[index] in "\r\n" else " ")
+                index += 1
+            if index >= len(content) - 1:
+                raise json.JSONDecodeError("Unterminated block comment", content, comment_start)
+            without_comments.extend((" ", " "))
+            index += 2
+        else:
+            without_comments.append(char)
+            index += 1
+
+    cleaned = "".join(without_comments)
+    without_trailing_commas: list[str] = []
+    index = 0
+    in_string = False
+    escaped = False
+
+    while index < len(cleaned):
+        char = cleaned[index]
+        if in_string:
+            without_trailing_commas.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+        elif char == '"':
+            in_string = True
+            without_trailing_commas.append(char)
+        elif char == ",":
+            next_index = index + 1
+            while next_index < len(cleaned) and cleaned[next_index].isspace():
+                next_index += 1
+            if next_index >= len(cleaned) or cleaned[next_index] not in "}]":
+                without_trailing_commas.append(char)
+        else:
+            without_trailing_commas.append(char)
+        index += 1
+
+    return "".join(without_trailing_commas)
+
+
 def load_config_from_file() -> dict[str, Any]:
-    config_path = os.path.expanduser("~/.commity/config.json")
-    if os.path.exists(config_path):
+    config_paths = [
+        os.path.expanduser("~/.commity/config.jsonc"),
+        os.path.expanduser("~/.commity/config.json"),
+    ]
+    config_path = next((path for path in config_paths if os.path.exists(path)), None)
+    if config_path:
         with open(config_path) as f:
             try:
-                return cast("dict[str, Any]", json.load(f))
+                return cast("dict[str, Any]", json.loads(_strip_jsonc(f.read())))
             except json.JSONDecodeError:
                 print(f"Warning: Could not decode JSON from {config_path}")
                 return {}

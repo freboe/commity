@@ -185,6 +185,59 @@ class TestLoadConfigFromFile:
             config = load_config_from_file()
             assert config == sample_config_data
 
+    def test_load_jsonc_config(self, tmp_path):
+        """Test loading comments and trailing commas from a JSONC file."""
+        config_file = tmp_path / "config.jsonc"
+        config_file.write_text(
+            """
+            {
+                // Keep URLs and comment markers inside strings unchanged.
+                "PROVIDER": "ollama",
+                "BASE_URL": "http://localhost:11434/*api*/",
+                "ALLOWED_TOOLS": [
+                    "read_file",
+                ],
+                /* A block comment may span
+                   multiple lines. */
+            }
+            """
+        )
+
+        with patch("commity.config.os.path.expanduser", return_value=str(config_file)):
+            config = load_config_from_file()
+
+        assert config == {
+            "PROVIDER": "ollama",
+            "BASE_URL": "http://localhost:11434/*api*/",
+            "ALLOWED_TOOLS": ["read_file"],
+        }
+
+    def test_jsonc_takes_priority_over_json(self, tmp_path):
+        json_file = tmp_path / "config.json"
+        jsonc_file = tmp_path / "config.jsonc"
+        json_file.write_text('{"MODEL": "from-json"}')
+        jsonc_file.write_text('{"MODEL": "from-jsonc"}')
+
+        def resolve_config_path(path):
+            return str(jsonc_file if path.endswith(".jsonc") else json_file)
+
+        with patch("commity.config.os.path.expanduser", side_effect=resolve_config_path):
+            config = load_config_from_file()
+
+        assert config["MODEL"] == "from-jsonc"
+
+    def test_falls_back_to_json(self, tmp_path):
+        json_file = tmp_path / "config.json"
+        json_file.write_text('{"MODEL": "from-json"}')
+
+        def resolve_config_path(path):
+            return str(tmp_path / "missing.jsonc") if path.endswith(".jsonc") else str(json_file)
+
+        with patch("commity.config.os.path.expanduser", side_effect=resolve_config_path):
+            config = load_config_from_file()
+
+        assert config["MODEL"] == "from-json"
+
     def test_load_nonexistent_config(self, tmp_path):
         """Test loading when config file doesn't exist."""
         nonexistent = tmp_path / "nonexistent.json"
