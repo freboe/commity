@@ -1,4 +1,47 @@
 import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+
+from unidiff import PatchSet
+
+
+@dataclass(frozen=True)
+class ChangeGroup:
+    """A coarse staged-change category used to suggest commit splitting."""
+
+    name: str
+    files: tuple[str, ...]
+
+
+def detect_change_groups(diff: str) -> list[ChangeGroup]:
+    """Identify potentially independent code, docs, build, and CI changes."""
+    try:
+        paths = [patched_file.path for patched_file in PatchSet(diff)]
+    except Exception:
+        return []
+
+    grouped: dict[str, list[str]] = {}
+    lock_files = {"Cargo.lock", "package-lock.json", "poetry.lock", "uv.lock", "yarn.lock"}
+    build_files = {"Cargo.toml", "package.json", "pyproject.toml", "requirements.txt"}
+    for path in paths:
+        filename = Path(path).name
+        lower_path = path.lower()
+        if lower_path.startswith(".github/workflows/"):
+            group = "ci"
+        elif filename in lock_files or filename in build_files:
+            group = "build"
+        elif path.endswith((".md", ".rst", ".txt")):
+            group = "docs"
+        else:
+            group = "code"
+        grouped.setdefault(group, []).append(path)
+
+    result = []
+    for name in ("code", "build", "ci", "docs"):
+        files = grouped.get(name)
+        if files:
+            result.append(ChangeGroup(name=name, files=tuple(files)))
+    return result
 
 
 def get_git_diff() -> str:

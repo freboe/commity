@@ -10,12 +10,18 @@ import requests
 
 from commity.config import LLMConfig
 
+OLLAMA_TEST_MODEL = "gpt-oss:20b"
+
 
 def is_ollama_available() -> bool:
-    """Check if Ollama is running and accessible."""
+    """Check if Ollama and the model required by integration tests are available."""
     try:
         response = requests.get("http://localhost:11434/api/tags", timeout=2)
-        return response.status_code == 200
+        if response.status_code != 200:
+            return False
+        return any(
+            model.get("name") == OLLAMA_TEST_MODEL for model in response.json().get("models", [])
+        )
     except Exception:
         return False
 
@@ -80,7 +86,7 @@ def ollama_config() -> LLMConfig:
     return LLMConfig(
         provider="ollama",
         base_url="http://localhost:11434",
-        model="gpt-oss:20b",  # Use locally installed model
+        model=OLLAMA_TEST_MODEL,
         temperature=0.7,
         max_tokens=500,  # Limit tokens for faster tests
         timeout=30,
