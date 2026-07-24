@@ -27,6 +27,7 @@ class TestLLMConfig:
         assert config.model == "llama3"
         assert config.temperature == 0.3  # default
         assert config.max_tokens == 3000  # default
+        assert config.context_window_tokens == 32768
 
     def test_config_with_all_fields(self):
         """Test creating config with all fields."""
@@ -217,6 +218,7 @@ class TestGetLLMConfig:
             api_key = None
             temperature = 0.8
             max_tokens = 1500
+            context_window_tokens = 16384
             timeout = 45
             proxy = "http://proxy:8080"
 
@@ -230,6 +232,7 @@ class TestGetLLMConfig:
             assert config.model == "test-model"
             assert config.temperature == 0.8
             assert config.max_tokens == 1500
+            assert config.context_window_tokens == 16384
             assert config.timeout == 45
             assert config.proxy == "http://proxy:8080"
 
@@ -243,6 +246,7 @@ class TestGetLLMConfig:
             api_key = None
             temperature = None
             max_tokens = None
+            context_window_tokens = None
             timeout = None
             proxy = None
 
@@ -252,6 +256,7 @@ class TestGetLLMConfig:
             "COMMITY_MODEL": "env-model",
             "COMMITY_TEMPERATURE": "0.6",
             "COMMITY_MAX_TOKENS": "2500",
+            "COMMITY_CONTEXT_WINDOW_TOKENS": "8192",
             "COMMITY_TIMEOUT": "50",
         }
 
@@ -265,6 +270,7 @@ class TestGetLLMConfig:
             assert config.model == "env-model"
             assert config.temperature == 0.6
             assert config.max_tokens == 2500
+            assert config.context_window_tokens == 8192
             assert config.timeout == 50
 
     def test_config_priority_args_over_env(self):

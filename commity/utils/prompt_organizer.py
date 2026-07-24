@@ -8,6 +8,7 @@
 
 import re
 from dataclasses import dataclass
+from math import log2
 from typing import Final
 
 from unidiff import PatchSet
@@ -23,6 +24,20 @@ MAX_FILES_IN_SUMMARY: Final[int] = 30  # 摘要中最多显示的文件数
 MAX_COMPRESSED_LINES: Final[int] = 1000  # 压缩模式下的最大行数
 MAX_HUNKS_PER_FILE: Final[int] = 5  # 每个文件最多显示的 hunk 数
 MAX_LINES_PER_HUNK: Final[int] = 10  # 每个 hunk 最多显示的行数
+LOCK_FILES: Final[set[str]] = {
+    "Cargo.lock",
+    "package-lock.json",
+    "poetry.lock",
+    "uv.lock",
+    "yarn.lock",
+}
+GENERATED_PATH_MARKERS: Final[tuple[str, ...]] = (
+    "/dist/",
+    "/generated/",
+    "/vendor/",
+    ".min.js",
+    ".snap",
+)
 
 
 # ============================================================================
@@ -49,11 +64,9 @@ def calculate_file_importance(file_path: str, added: int, removed: int) -> int:
     """计算文件的重要性分数.
 
     评分规则：
-    - 核心源代码文件（.py, .js, .ts 等）: 基础分 10
-    - 配置文件（.json, .yaml 等）: 基础分 5
-    - 测试和文档: 基础分 2
-    - Lock 文件: 基础分 1
-    - 变更行数贡献（上限 50）
+    - 核心源代码优先于配置、测试、文档和生成文件
+    - Lock 文件具有最低优先级
+    - 变更规模只按对数增加，避免大文件掩盖小型核心修改
 
     Args:
     ----
@@ -66,27 +79,35 @@ def calculate_file_importance(file_path: str, added: int, removed: int) -> int:
         重要性分数（越高越重要）
 
     """
-    score = 0
+    normalized = file_path.replace("\\", "/")
+    filename = normalized.rsplit("/", 1)[-1]
+    lower_path = normalized.lower()
 
-    # 1. 根据文件类型评分
-    if file_path.endswith((".py", ".js", ".ts", ".go", ".rs", ".java", ".cpp", ".c")):
-        score += 10  # 核心源代码
-    elif file_path.endswith((".json", ".yaml", ".yml", ".toml", ".ini", ".conf")):
-        score += 5  # 配置文件
-    elif "test" in file_path.lower() or file_path.endswith((".md", ".txt", ".rst")):
-        score += 2  # 测试和文档
-    elif file_path in ("package-lock.json", "yarn.lock", "Cargo.lock", "poetry.lock"):
-        score += 1  # Lock 文件（最低优先级）
+    if filename in LOCK_FILES:
+        base_score = 0
+    elif any(marker in f"/{lower_path}" for marker in GENERATED_PATH_MARKERS):
+        base_score = 1
+    elif (
+        "/test/" in f"/{lower_path}/"
+        or "/tests/" in f"/{lower_path}/"
+        or filename.startswith("test_")
+        or filename.endswith(("_test.py", ".test.js", ".test.ts", ".spec.js", ".spec.ts"))
+    ):
+        base_score = 10
+    elif normalized.endswith((".py", ".js", ".ts", ".go", ".rs", ".java", ".cpp", ".c")):
+        base_score = 30
+    elif normalized.endswith((".json", ".yaml", ".yml", ".toml", ".ini", ".conf")):
+        base_score = 20
+    elif normalized.endswith((".md", ".txt", ".rst")):
+        base_score = 5
+    else:
+        base_score = 15
 
-    # 2. 特殊文件加分
-    if file_path in ("README.md", "pyproject.toml", "package.json", "Cargo.toml"):
-        score += 8
+    if filename in ("README.md", "pyproject.toml", "package.json", "Cargo.toml"):
+        base_score += 8
 
-    # 3. 变更规模贡献（上限 50）
-    change_size = min(added + removed, 50)
-    score += change_size
-
-    return score
+    change_score = min(int(log2(added + removed + 1) * 2), 10)
+    return base_score + change_score
 
 
 def rank_files_by_importance(patch: PatchSet) -> list[FileImportance]:
@@ -153,39 +174,17 @@ def extract_hunk_context(hunk) -> str:
     return ""
 
 
-def extract_hunk_changes(hunk, max_lines: int = MAX_LINES_PER_HUNK) -> tuple[list[str], list[str]]:
-    """提取 hunk 中的关键变更.
-
-    Args:
-    ----
-        hunk: unidiff 的 Hunk 对象
-        max_lines: 每个 hunk 最多提取的行数
-
-    Returns:
-    -------
-        (removed_lines, added_lines) 元组
-
-    """
-    added_lines = []
-    removed_lines = []
-    line_count = 0
-
+def extract_ordered_hunk_changes(hunk, max_lines: int = MAX_LINES_PER_HUNK) -> list[str]:
+    """Extract changed lines while preserving their original diff order."""
+    changes = []
     for line in hunk:
-        if line_count >= max_lines:
+        if len(changes) >= max_lines:
             break
-
-        # 跳过 import 语句（通常不是关键变更）
-        if line.value.strip().startswith(("import ", "from ")):
-            continue
-
         if line.is_added:
-            added_lines.append(f"    + {line.value.rstrip()}")
-            line_count += 1
+            changes.append(f"    + {line.value.rstrip()}")
         elif line.is_removed:
-            removed_lines.append(f"    - {line.value.rstrip()}")
-            line_count += 1
-
-    return removed_lines, added_lines
+            changes.append(f"    - {line.value.rstrip()}")
+    return changes
 
 
 def format_file_summary(patched_file, max_hunks: int = MAX_HUNKS_PER_FILE) -> str:
@@ -225,11 +224,7 @@ def format_file_summary(patched_file, max_hunks: int = MAX_HUNKS_PER_FILE) -> st
             lines.append(context)
 
         # 提取变更
-        removed_lines, added_lines = extract_hunk_changes(hunk)
-
-        # 先显示删除，再显示新增（更符合 diff 习惯）
-        lines.extend(removed_lines[:5])
-        lines.extend(added_lines[:5])
+        lines.extend(extract_ordered_hunk_changes(hunk))
 
     return "\n".join(lines)
 
@@ -275,9 +270,14 @@ def compress_with_structure(diff_text: str, max_tokens: int, model_name: str, pr
     # 2. 构建文件映射（方便查找）
     files_map = {pf.path: pf for pf in patch}
 
-    # 3. 逐个添加文件（优先级高的先加）
-    result_parts: list[str] = []
+    # 3. First preserve an inventory of every changed file.
     total_files = len(ranked_files)
+    inventory = [
+        f"- {file_info.path} (+{file_info.added} -{file_info.removed})"
+        for file_info in ranked_files[:MAX_FILES_IN_SUMMARY]
+    ]
+    result_parts: list[str] = ["Changed files:\n" + "\n".join(inventory)]
+    detailed_files = 0
 
     for file_info in ranked_files:
         patched_file = files_map.get(file_info.path)
@@ -290,22 +290,18 @@ def compress_with_structure(diff_text: str, max_tokens: int, model_name: str, pr
         # 尝试添加，检查是否超出限制
         test_content = "\n\n".join([*result_parts, file_summary])
         if count_tokens(test_content, model_name, provider) > max_tokens:
-            # 如果一个文件都没添加，至少添加一个简化版本
-            if not result_parts:
-                minimal = (
-                    f"📄 **{file_info.path}**\n   +{file_info.added} -{file_info.removed} lines"
-                )
-                result_parts.append(minimal)
-            break
+            continue
 
         result_parts.append(file_summary)
+        detailed_files += 1
 
     # 4. 生成头部信息
-    shown_files = len(result_parts)
-    header_lines = [f"📝 Changes in {shown_files}/{total_files} files (sorted by importance):"]
+    header_lines = [
+        f"📝 Detailed changes for {detailed_files}/{total_files} files (sorted by importance):"
+    ]
 
-    if shown_files < total_files:
-        omitted = total_files - shown_files
+    if detailed_files < total_files:
+        omitted = total_files - detailed_files
         header_lines.append(f"⚠️ {omitted} files omitted due to space constraints")
 
     header = "\n".join(header_lines)

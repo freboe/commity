@@ -14,59 +14,47 @@ class TestCalculateFileImportance:
     def test_python_source_file(self):
         """Test scoring for Python source files."""
         score = calculate_file_importance("src/main.py", 10, 5)
-        # 10 for .py + 15 for changes = 25
-        assert score == 25
+        assert score > calculate_file_importance("tests/test_main.py", 100, 100)
 
     def test_javascript_source_file(self):
         """Test scoring for JavaScript source files."""
         score = calculate_file_importance("app/index.js", 20, 10)
-        # 10 for .js + 30 for changes = 40
-        assert score == 40
+        assert score > calculate_file_importance("package-lock.json", 1000, 1000)
 
     def test_config_file(self):
         """Test scoring for configuration files."""
         score = calculate_file_importance("config.yaml", 5, 3)
-        # 5 for .yaml + 8 for changes = 13
-        assert score == 13
+        assert score > calculate_file_importance("README.md", 5, 3)
 
     def test_test_file(self):
         """Test scoring for test files (both .py and test path)."""
         score = calculate_file_importance("tests/test_main.py", 10, 5)
-        # 10 for .py + 2 for test + 15 for changes = 27 (wait, let me check the actual implementation)
-        # Actually: 10 (.py) + 15 (changes) = 25, test path doesn't add extra since .py already matched
-        assert score == 25  # .py takes precedence
+        assert score < calculate_file_importance("src/main.py", 1, 1)
 
     def test_markdown_test_file(self):
         """Test scoring for markdown files in test directory."""
         score = calculate_file_importance("tests/README.md", 5, 0)
-        # 2 for test + 5 for changes = 7
-        assert score == 7
+        assert score < calculate_file_importance("src/main.py", 1, 1)
 
     def test_lock_file(self):
         """Test scoring for lock files (lowest priority)."""
         score = calculate_file_importance("package-lock.json", 100, 50)
-        # Note: .json matches first (5 points), then 50 for changes (capped)
-        # Lock file check is in elif, so not executed if .json matched
-        # 5 for .json + 50 (capped at max) = 55
-        assert score == 55
+        assert score < calculate_file_importance("src/main.py", 1, 1)
 
     def test_special_file_readme(self):
         """Test scoring for special files like README."""
         score = calculate_file_importance("README.md", 5, 0)
-        # 2 for .md + 8 bonus for README + 5 for changes = 15
-        assert score == 15
+        assert score > calculate_file_importance("docs/guide.md", 5, 0)
 
     def test_special_file_pyproject(self):
         """Test scoring for pyproject.toml."""
         score = calculate_file_importance("pyproject.toml", 10, 0)
-        # 5 for .toml + 8 bonus + 10 for changes = 23
-        assert score == 23
+        assert score > calculate_file_importance("config.toml", 10, 0)
 
     def test_change_size_cap(self):
         """Test that change size is capped at 50."""
         score = calculate_file_importance("src/huge.py", 100, 100)
-        # 10 for .py + 50 (capped, not 200) = 60
-        assert score == 60
+        assert score - calculate_file_importance("src/small.py", 1, 0) <= 10
 
 
 class TestCompressWithLines:
@@ -126,6 +114,26 @@ index 1234567..abcdefg 100644
         assert len(result) > 0
         # Should have some content about the file
         assert "main.py" in result
+
+    def test_preserves_all_file_names_when_details_do_not_fit(self):
+        diff = """diff --git a/tests/test_large.py b/tests/test_large.py
+--- a/tests/test_large.py
++++ b/tests/test_large.py
+@@ -1 +1 @@
+-old
++large test change
+diff --git a/src/auth.py b/src/auth.py
+--- a/src/auth.py
++++ b/src/auth.py
+@@ -1 +1 @@
+-return expired
++return refreshed
+"""
+        result = compress_with_structure(diff, 100, "gpt-4", "openai")
+
+        assert "tests/test_large.py" in result
+        assert "src/auth.py" in result
+        assert result.index("src/auth.py") < result.index("tests/test_large.py")
 
     def test_returns_no_changes_for_empty_patch(self):
         """Test handling of empty or invalid patch."""

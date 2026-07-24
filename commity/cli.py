@@ -16,6 +16,21 @@ from commity.utils.prompt_organizer import summary_and_tokens_checker
 from commity.utils.spinner import spinner
 from commity.utils.token_counter import count_tokens
 
+TOKEN_SAFETY_MARGIN = 512
+
+
+def _calculate_diff_token_budget(
+    context_window_tokens: int,
+    max_output_tokens: int,
+    prompt_tokens: int,
+    safety_margin: int = TOKEN_SAFETY_MARGIN,
+) -> int:
+    """Reserve model output separately from the prompt input budget."""
+    return max(
+        context_window_tokens - max_output_tokens - prompt_tokens - safety_margin,
+        100,
+    )
+
 
 def _split_commit_message(commit_msg: str) -> list[str]:
     lines = [line.rstrip() for line in commit_msg.strip().splitlines()]
@@ -119,6 +134,11 @@ def main() -> None:
     parser.add_argument("--temperature", type=float, help="Temperature for generation")
     parser.add_argument("--max_tokens", type=int, help="Max tokens for LLM response generation")
     parser.add_argument(
+        "--context_window_tokens",
+        type=int,
+        help="Maximum tokens accepted by the model context window",
+    )
+    parser.add_argument(
         "--max_subject_chars",
         type=int,
         default=50,
@@ -173,7 +193,11 @@ def main() -> None:
     )
     system_prompt_tokens = count_tokens(base_prompt, config.model, config.provider)
 
-    diff_token_budget = max(config.max_tokens - system_prompt_tokens, 100)
+    diff_token_budget = _calculate_diff_token_budget(
+        config.context_window_tokens,
+        config.max_tokens,
+        system_prompt_tokens,
+    )
     diff = summary_and_tokens_checker(
         diff, max_output_tokens=diff_token_budget, model_name=config.model, provider=config.provider
     )

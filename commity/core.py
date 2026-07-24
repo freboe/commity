@@ -76,6 +76,15 @@ GUIDELINES FOR CHOOSING TYPE:
 - Use `build` for changes to dependencies (package.json, requirements.txt) or build tools.
 - Use `ci` for changes to CI/CD pipelines (GitHub Actions, Jenkins, etc.) configuration.
 - Use `chore` for maintenance tasks, updating versions, or changes that don't fit other categories and don't affect production code.
+
+GUIDELINES FOR IDENTIFYING THE CHANGE:
+- Describe the primary observable behavior or capability, not the number of changed files.
+- Treat production code as the primary evidence and tests as evidence of intended behavior.
+- Use configuration, dependency, and documentation changes to clarify the purpose of production changes.
+- Distinguish user-visible features and fixes from internal refactoring.
+- Do not infer behavior that is not supported by the diff.
+- When changes span multiple concerns, summarize the dominant cohesive change in the subject and
+  use the body for important supporting changes.
 """
 
     emoji_rules = """- Use emojis in the subject line.

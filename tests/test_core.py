@@ -75,6 +75,8 @@ class TestGeneratePrompt:
         assert "Git Diff:" in prompt
         assert diff in prompt
         assert "commit message" in prompt
+        assert "primary observable behavior" in prompt
+        assert "tests as evidence of intended behavior" in prompt
 
     def test_generate_prompt_with_language(self):
         """Test prompt generation with custom language."""
