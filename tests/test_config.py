@@ -101,6 +101,19 @@ class TestLLMConfig:
         with pytest.raises(ValidationError, match="greater than 0"):
             LLMConfig(provider="ollama", base_url="http://localhost", model="llama3", max_tokens=-1)
 
+    def test_max_tokens_must_be_smaller_than_context_window(self):
+        with pytest.raises(
+            ValidationError,
+            match="max_tokens must be smaller than context_window_tokens",
+        ):
+            LLMConfig(
+                provider="ollama",
+                base_url="http://localhost",
+                model="llama3",
+                max_tokens=1024,
+                context_window_tokens=1024,
+            )
+
     def test_timeout_validation(self):
         """Test timeout validation."""
         # Valid

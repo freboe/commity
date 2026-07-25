@@ -2,8 +2,13 @@
 
 import json
 
-from commity.llm.base import BaseLLMClient
+from commity.llm.base import BaseLLMClient, LLMGenerationError
 from commity.repository_tools import ReadOnlyRepositoryTools
+from commity.utils.token_counter import (
+    TOKEN_SAFETY_MARGIN,
+    count_tokens,
+    truncate_to_token_limit,
+)
 
 
 class OpenAIClient(BaseLLMClient):
@@ -34,13 +39,23 @@ class OpenAIClient(BaseLLMClient):
                     result = json.dumps({"error": "tool arguments must be valid JSON"})
                 else:
                     result = repository_tools.execute(function.get("name", ""), arguments)
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": tool_call.get("id", ""),
-                        "content": result,
-                    }
+                tool_message = {
+                    "role": "tool",
+                    "tool_call_id": tool_call.get("id", ""),
+                    "content": "",
+                }
+                available_tokens = self._remaining_input_tokens(
+                    [*messages, tool_message],
+                    repository_tools.definitions,
                 )
+                tool_message["content"] = truncate_to_token_limit(
+                    result,
+                    available_tokens,
+                    self.config.model,
+                    self.config.provider,
+                    suffix="\n[tool output truncated]",
+                )
+                messages.append(tool_message)
 
         messages.append(
             {
@@ -58,6 +73,12 @@ class OpenAIClient(BaseLLMClient):
             return None
 
     def _request_message(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
+        if self._remaining_input_tokens(messages, tools) < 0:
+            raise LLMGenerationError(
+                "Model context window exceeded before request",
+                status_code=400,
+                details="context window token budget exhausted",
+            )
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.config.api_key}",
@@ -74,3 +95,25 @@ class OpenAIClient(BaseLLMClient):
         url = f"{self.config.base_url}/chat/completions"
         response = self._make_request(url, payload, headers)
         return response.json()["choices"][0]["message"]
+
+    def _remaining_input_tokens(
+        self,
+        messages: list[dict],
+        tools: list[dict] | None = None,
+    ) -> int:
+        request_content = {
+            "messages": messages,
+            "tools": tools or [],
+        }
+        serialized = json.dumps(
+            request_content,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        used_tokens = count_tokens(serialized, self.config.model, self.config.provider)
+        return (
+            self.config.context_window_tokens
+            - self.config.max_tokens
+            - TOKEN_SAFETY_MARGIN
+            - used_tokens
+        )

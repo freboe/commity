@@ -89,9 +89,11 @@ class LLMConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_api_key_for_provider(self) -> "LLMConfig":
-        """Validate that providers requiring API keys have them."""
+        """Validate related model settings."""
         if self.provider in PROVIDERS_REQUIRING_API_KEY and not self.api_key:
             raise ValueError(f"API key must be specified for provider '{self.provider}'")
+        if self.max_tokens >= self.context_window_tokens:
+            raise ValueError("max_tokens must be smaller than context_window_tokens")
         return self
 
     model_config = {"frozen": False, "validate_assignment": True}

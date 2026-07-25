@@ -6,6 +6,7 @@ from commity.utils.prompt_organizer import (
     compress_with_structure,
     summary_and_tokens_checker,
 )
+from commity.utils.token_counter import count_tokens
 
 
 class TestCalculateFileImportance:
@@ -164,6 +165,20 @@ class TestSummaryAndTokensChecker:
 
         # Should be compressed
         assert len(result) < len(large_diff)
+
+    def test_compressed_result_strictly_respects_token_limit(self):
+        large_diff = "diff --git a/src/main.py b/src/main.py\n" + "\n".join(
+            f"+{'x' * 120}" for _ in range(200)
+        )
+
+        result = summary_and_tokens_checker(
+            large_diff,
+            10,
+            "gemini-2.5-flash",
+            "gemini",
+        )
+
+        assert count_tokens(result, "gemini-2.5-flash", "gemini") <= 10
 
     def test_handles_empty_diff(self):
         """Test handling of empty diff."""

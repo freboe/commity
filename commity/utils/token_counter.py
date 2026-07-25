@@ -7,6 +7,7 @@ import tiktoken
 
 # Constants
 SAFETY_MARGIN: Final[float] = 1.1  # 10% safety margin for token counting
+TOKEN_SAFETY_MARGIN: Final[int] = 512
 
 
 def _is_cjk_char(char: str) -> bool:
@@ -137,4 +138,34 @@ def count_tokens(text: str, model_name: str, provider: str = "openai") -> int:
         token_count = _estimate_tokens(text, provider)
 
     # Apply safety margin to avoid edge cases
-    return int(token_count * SAFETY_MARGIN)
+    return max(int(token_count * SAFETY_MARGIN), 1)
+
+
+def truncate_to_token_limit(
+    text: str,
+    max_tokens: int,
+    model_name: str,
+    provider: str = "openai",
+    suffix: str = "\n...<truncated>",
+) -> str:
+    """Return the longest text prefix that fits within the token limit."""
+    if not text or max_tokens <= 0:
+        return ""
+    if count_tokens(text, model_name, provider) <= max_tokens:
+        return text
+
+    fitted_suffix = suffix
+    if count_tokens(fitted_suffix, model_name, provider) > max_tokens:
+        fitted_suffix = ""
+
+    low = 0
+    high = len(text)
+    while low < high:
+        middle = (low + high + 1) // 2
+        candidate = text[:middle] + fitted_suffix
+        if count_tokens(candidate, model_name, provider) <= max_tokens:
+            low = middle
+        else:
+            high = middle - 1
+
+    return text[:low] + fitted_suffix

@@ -13,7 +13,7 @@ from typing import Final
 
 from unidiff import PatchSet
 
-from commity.utils.token_counter import count_tokens
+from commity.utils.token_counter import count_tokens, truncate_to_token_limit
 
 # ============================================================================
 # 常量配置
@@ -407,8 +407,7 @@ def summary_and_tokens_checker(
     # 策略3：简单行压缩（fallback）
     # 估算可以保留的行数
     avg_tokens_per_line = compressed_tokens / max(len(compressed.splitlines()), 1)
-    safe_lines = int(max_output_tokens / avg_tokens_per_line * 0.8)  # 80% 安全边界
-    safe_lines = max(safe_lines, 50)  # 至少保留 50 行
+    safe_lines = max(int(max_output_tokens / avg_tokens_per_line * 0.8), 1)
 
     fallback = compress_with_lines(diff_text, max_lines=safe_lines)
 
@@ -418,6 +417,11 @@ def summary_and_tokens_checker(
             f"⚠️ Diff too long ({len(diff_text)} characters), "
             "it is recommended to submit in batches or simplify changes。\n\n"
         )
-        return warning + fallback
+        fallback = warning + fallback
 
-    return fallback
+    return truncate_to_token_limit(
+        fallback,
+        max_output_tokens,
+        model_name,
+        provider,
+    )

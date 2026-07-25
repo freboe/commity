@@ -61,6 +61,7 @@ def test_enabled_tools_are_filtered_and_passed_to_client(mocker):
     client = mocker.Mock()
     client.generate_with_tools.return_value = '{"type":"fix"}'
     repository_tools = mocker.Mock()
+    repository_tools.definitions = [{"type": "function", "function": {"name": "read_file"}}]
 
     mocker.patch("sys.argv", ["commity"])
     mocker.patch.object(cli, "get_llm_config", return_value=config)
