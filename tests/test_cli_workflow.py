@@ -7,12 +7,20 @@ import commity.cli as cli
 from commity.cli import (
     _compress_diff,
     _confirm_combined_changes,
+    _create_argument_parser,
     _handle_commit_actions,
     _run_generation_workflow,
     _show_config,
 )
 from commity.core import ChangeGroup
 from commity.llm import LLMGenerationError
+
+
+def test_subject_limit_defaults_to_60_and_accepts_override():
+    parser = _create_argument_parser()
+
+    assert parser.parse_args([]).max_subject_chars == 60
+    assert parser.parse_args(["--max_subject_chars", "72"]).max_subject_chars == 72
 
 
 def test_commit_failure_keeps_generated_message(mocker):
@@ -191,6 +199,93 @@ def test_generation_workflow_retries_context_overflow_once(mocker):
         confirm="n",
         max_subject_chars=50,
     )
+
+
+def test_generation_workflow_rewrites_overlong_subject_once(mocker):
+    args = SimpleNamespace(
+        language="en",
+        emoji=False,
+        type="conventional",
+        max_subject_chars=40,
+        confirm="n",
+    )
+    config = SimpleNamespace(debug=False, model="test-model", provider="ollama")
+    client = mocker.Mock()
+    generate = mocker.patch.object(
+        cli,
+        "_generate_raw_message",
+        side_effect=[
+            (
+                '{"type":"fix","scope":"token-budget",'
+                '"subject":"truncate tool and diff outputs","body":[]}'
+            ),
+            ('{"type":"fix","scope":"budget","subject":"enforce context limits","body":[]}'),
+        ],
+    )
+    prompts = mocker.patch.object(
+        cli,
+        "generate_prompt",
+        side_effect=lambda _diff, **kwargs: kwargs["guidance"],
+    )
+    output = mocker.patch.object(cli, "print")
+    actions = mocker.patch.object(cli, "_handle_commit_actions", return_value=None)
+
+    _run_generation_workflow(
+        args,
+        config,
+        client,
+        None,
+        "original diff",
+        "initial diff",
+        "repository",
+    )
+
+    assert generate.call_count == 2
+    retry_guidance = prompts.call_args_list[1].kwargs["guidance"]
+    assert '"fix(token-budget): truncate tool and diff outputs"' in retry_guidance
+    assert "JSON subject field must be at most 21 characters" in retry_guidance
+    assert "preserves the umbrella outcome" in retry_guidance
+    assert "asking the model to rewrite it (1/2)" in output.call_args.args[0]
+    actions.assert_called_once_with(
+        "fix(budget): enforce context limits",
+        confirm="n",
+        max_subject_chars=40,
+    )
+
+
+def test_generation_workflow_rejects_subject_after_bounded_rewrites(mocker):
+    args = SimpleNamespace(
+        language="en",
+        emoji=False,
+        type="conventional",
+        max_subject_chars=30,
+        confirm="y",
+    )
+    config = SimpleNamespace(debug=False, model="test-model", provider="ollama")
+    client = mocker.Mock()
+    raw = (
+        '{"type":"fix","scope":"budget","subject":"enforce strict context window limits","body":[]}'
+    )
+    generate = mocker.patch.object(cli, "_generate_raw_message", side_effect=[raw, raw, raw])
+    mocker.patch.object(cli, "generate_prompt", return_value="prompt")
+    show_message = mocker.patch.object(cli, "_show_commit_message")
+    mocker.patch.object(cli, "print")
+    mocker.patch.object(cli.Prompt, "ask", return_value="n")
+    actions = mocker.patch.object(cli, "_handle_commit_actions")
+
+    _run_generation_workflow(
+        args,
+        config,
+        client,
+        None,
+        "original diff",
+        "initial diff",
+        "repository",
+    )
+
+    assert generate.call_count == 3
+    show_message.assert_called_once_with("fix(budget): enforce strict context window limits")
+    actions.assert_not_called()
 
 
 def test_commit_actions_return_regeneration_guidance(mocker):

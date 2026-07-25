@@ -5,6 +5,9 @@ from pathlib import Path
 
 from unidiff import PatchSet
 
+DEFAULT_MAX_SUBJECT_CHARS = 60
+PREFERRED_SUBJECT_CHARS = 50
+
 
 @dataclass(frozen=True)
 class ChangeGroup:
@@ -122,11 +125,11 @@ def generate_prompt(
     language: str = "en",
     emoji: bool = True,
     type_: str = "conventional",
-    max_subject_chars: int = 50,
+    max_subject_chars: int = DEFAULT_MAX_SUBJECT_CHARS,
     repository_context: str = "",
     guidance: str = "",
 ) -> str:
-    description_char_budget = max(max_subject_chars - 20, 10)
+    preferred_subject_chars = min(max_subject_chars, PREFERRED_SUBJECT_CHARS)
     base_rules = f"""You are a Git commit message generator. Generate a commit message in {language} based on the provided Git diff.
 
 CRITICAL: Return ONLY one JSON object with this schema:
@@ -141,8 +144,9 @@ Do NOT include:
 
 Follow these rules:
 - The rendered subject, including type, scope, and emoji, must not exceed {max_subject_chars} characters.
+- Keep the rendered subject within {preferred_subject_chars} characters when the primary outcome
+  remains clear.
 - Return the subject description without the type, scope, emoji, or final period.
-- Keep the JSON subject field within {description_char_budget} characters.
 - The body (optional) should provide more details, with each line not exceeding 72 characters.
 - Use an empty string for scope when no scope is justified.
 - Set breaking to true only for a breaking API or behavior change.
@@ -182,12 +186,19 @@ GUIDELINES FOR CHOOSING TYPE:
 
 GUIDELINES FOR IDENTIFYING THE CHANGE:
 - Describe the primary observable behavior or capability, not the number of changed files.
+- Identify the single invariant, outcome, or user-facing behavior that unifies the production changes.
+- Prefer that umbrella outcome in the subject over enumerating implementation mechanisms,
+  affected output types, helper names, or individual files.
+- Put supporting mechanisms such as truncation, validation, reservation, and error handling
+  in the body.
 - Treat production code as the primary evidence and tests as evidence of intended behavior.
 - Use configuration, dependency, and documentation changes to clarify the purpose of production changes.
 - Distinguish user-visible features and fixes from internal refactoring.
 - Do not infer behavior that is not supported by the diff.
 - When changes span multiple concerns, summarize the dominant cohesive change in the subject and
   use the body for important supporting changes.
+- Before returning, verify that the subject represents every important production-code change
+  described in the body.
 """
 
     emoji_rules = """- The program will add the correct emoji after parsing the JSON.
@@ -212,16 +223,18 @@ Repository Context:
 {repository_context}
 """)
 
-    if guidance:
-        prompt_parts.append(f"""
-Additional User Guidance:
-{guidance}
-""")
-
     prompt_parts.append(f"""
 Git Diff:
 {diff}
+""")
 
+    if guidance:
+        prompt_parts.append(f"""
+Final Generation Guidance:
+{guidance}
+""")
+
+    prompt_parts.append("""
 Remember: Output ONLY the JSON object. No thinking, analysis, or markdown.
 """)
 

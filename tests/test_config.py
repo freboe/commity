@@ -295,6 +295,7 @@ class TestGetLLMConfig:
             assert config.max_tokens == 512
             assert config.context_window_tokens == 1_000_000
             assert config.timeout == 90
+            assert config.max_attempts == 3
             assert config.allow_tools is False
             assert config.allowed_tools is None
 
@@ -310,6 +311,7 @@ class TestGetLLMConfig:
             max_tokens = 1500
             context_window_tokens = 16384
             timeout = 45
+            max_attempts = 5
             proxy = "http://proxy:8080"
             allow_tools = True
             allowed_tools: ClassVar = ["read_file", "get_commit"]
@@ -326,6 +328,7 @@ class TestGetLLMConfig:
             assert config.max_tokens == 1500
             assert config.context_window_tokens == 16384
             assert config.timeout == 45
+            assert config.max_attempts == 5
             assert config.proxy == "http://proxy:8080"
             assert config.allow_tools is True
             assert config.allowed_tools == ["read_file", "get_commit"]
@@ -342,6 +345,7 @@ class TestGetLLMConfig:
             max_tokens = None
             context_window_tokens = None
             timeout = None
+            max_attempts = None
             proxy = None
 
         env_vars = {
@@ -353,6 +357,7 @@ class TestGetLLMConfig:
             "COMMITY_CONTEXT_WINDOW_TOKENS": "8192",
             "COMMITY_DEBUG": "true",
             "COMMITY_TIMEOUT": "50",
+            "COMMITY_MAX_ATTEMPTS": "4",
             "COMMITY_ALLOW_TOOLS": "true",
             "COMMITY_ALLOWED_TOOLS": "read_file, get_staged_diff",
         }
@@ -370,6 +375,7 @@ class TestGetLLMConfig:
             assert config.context_window_tokens == 8192
             assert config.debug is True
             assert config.timeout == 50
+            assert config.max_attempts == 4
             assert config.allow_tools is True
             assert config.allowed_tools == ["read_file", "get_staged_diff"]
 

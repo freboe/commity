@@ -4,6 +4,7 @@ import pytest
 
 from commity.commit_message import (
     CommitMessageError,
+    SubjectLengthError,
     parse_generated_commit,
     validate_commit_message,
 )
@@ -53,22 +54,35 @@ def test_rejects_invalid_plain_text(message):
         validate_commit_message(message, 50)
 
 
-def test_compacts_generated_subject_to_limit():
-    result = parse_generated_commit(
-        '{"type":"fix","scope":"core","subject":"describe a very long correction","body":[]}',
-        max_subject_chars=20,
-        emoji=False,
-    )
+def test_rejects_overlong_structured_subject():
+    raw = '{"type":"fix","scope":"core","subject":"describe a very long correction","body":[]}'
 
-    assert result == "fix(core): describe"
-    assert len(result.splitlines()[0]) <= 20
+    with pytest.raises(SubjectLengthError, match="maximum is 20") as exc_info:
+        parse_generated_commit(
+            raw,
+            max_subject_chars=20,
+            emoji=False,
+        )
+
+    assert exc_info.value.commit_msg == "fix(core): describe a very long correction"
+    assert exc_info.value.subject == "fix(core): describe a very long correction"
+    assert exc_info.value.description_char_budget == 9
 
 
-def test_compacts_generated_subject_with_emoji_and_preserves_body():
+def test_rejects_overlong_legacy_subject():
+    with pytest.raises(SubjectLengthError, match="maximum is 20"):
+        parse_generated_commit(
+            "fix(core): describe a very long correction",
+            max_subject_chars=20,
+            emoji=False,
+        )
+
+
+def test_preserves_body_when_structured_subject_fits():
     raw = """{
         "type": "refactor",
         "scope": "prompt",
-        "subject": "improve generated commit message accuracy and validation",
+        "subject": "improve message accuracy",
         "body": ["Preserve the detailed explanation in the body."],
         "breaking": false
     }"""
@@ -76,5 +90,5 @@ def test_compacts_generated_subject_with_emoji_and_preserves_body():
     result = parse_generated_commit(raw, max_subject_chars=60, emoji=True)
 
     assert len(result.splitlines()[0]) <= 60
-    assert result.startswith("refactor(prompt): 🔨 improve generated commit message")
+    assert result.startswith("refactor(prompt): 🔨 improve message accuracy")
     assert "Preserve the detailed explanation in the body." in result

@@ -42,6 +42,34 @@ class CommitMessageError(ValueError):
     """Raised when a generated commit message is not safe to use."""
 
 
+class SubjectLengthError(CommitMessageError):
+    """Raised when a generated subject exceeds the configured hard limit."""
+
+    def __init__(self, commit_msg: str, max_subject_chars: int):
+        self.commit_msg = commit_msg
+        self.subject = commit_msg.splitlines()[0].strip()
+        match = SUBJECT_PATTERN.fullmatch(self.subject)
+        description_start = match.start("description") if match else len(self.subject)
+        emoji_chars = 0
+        if match:
+            description = match.group("description")
+            emoji_chars = next(
+                (
+                    len(marker)
+                    for emoji in TYPE_EMOJIS.values()
+                    if description.startswith(marker := emoji + " ")
+                ),
+                0,
+            )
+        self.description_char_budget = max(
+            max_subject_chars - description_start - emoji_chars,
+            0,
+        )
+        super().__init__(
+            f"subject is {len(self.subject)} characters; maximum is {max_subject_chars}"
+        )
+
+
 def _parse_json(raw: str) -> dict[str, Any] | None:
     cleaned = raw.strip()
     if cleaned.startswith("```"):
@@ -87,48 +115,6 @@ def _render_json_message(data: dict[str, Any], emoji: bool) -> str:
     return "\n".join(lines)
 
 
-def _fit_generated_subject(commit_msg: str, max_subject_chars: int) -> str:
-    """Shorten a generated description at a word boundary while preserving its prefix."""
-    if max_subject_chars <= 0:
-        return commit_msg
-
-    lines = commit_msg.splitlines()
-    subject = lines[0].strip()
-    if len(subject) <= max_subject_chars:
-        return commit_msg
-
-    match = SUBJECT_PATTERN.fullmatch(subject)
-    if not match:
-        return commit_msg
-
-    description_start = match.start("description")
-    prefix = subject[:description_start]
-    description = match.group("description")
-    available = max_subject_chars - len(prefix)
-    if available <= 0:
-        raise CommitMessageError("type and scope exceed the subject length limit")
-
-    emoji_prefix = ""
-    for emoji in TYPE_EMOJIS.values():
-        marker = emoji + " "
-        if description.startswith(marker):
-            emoji_prefix = marker
-            description = description[len(marker) :]
-            available -= len(marker)
-            break
-    if available <= 0:
-        raise CommitMessageError("type, scope, and emoji exceed the subject length limit")
-
-    shortened = textwrap.shorten(description, width=available, placeholder="")
-    if not shortened:
-        shortened = description[:available].rstrip()
-    if not shortened:
-        raise CommitMessageError("subject description cannot fit within the length limit")
-
-    lines[0] = prefix + emoji_prefix + shortened
-    return "\n".join(lines)
-
-
 def validate_commit_message(commit_msg: str, max_subject_chars: int) -> str:
     """Validate the Conventional Commit fields used by git commit."""
     lines = commit_msg.strip().splitlines()
@@ -142,9 +128,7 @@ def validate_commit_message(commit_msg: str, max_subject_chars: int) -> str:
     if match.group("type") not in ALLOWED_TYPES:
         raise CommitMessageError(f"unsupported commit type: {match.group('type')}")
     if max_subject_chars > 0 and len(subject) > max_subject_chars:
-        raise CommitMessageError(
-            f"subject is {len(subject)} characters; maximum is {max_subject_chars}"
-        )
+        raise SubjectLengthError(commit_msg.strip(), max_subject_chars)
     if match.group("description").rstrip().endswith("."):
         raise CommitMessageError("subject must not end with a period")
     for line in lines[1:]:
@@ -153,12 +137,15 @@ def validate_commit_message(commit_msg: str, max_subject_chars: int) -> str:
     return commit_msg.strip()
 
 
-def parse_generated_commit(raw: str, max_subject_chars: int, emoji: bool) -> str:
+def parse_generated_commit(
+    raw: str,
+    max_subject_chars: int,
+    emoji: bool,
+) -> str:
     """Accept structured model output or a compatible plain-text message."""
     data = _parse_json(raw)
     if data is not None:
         commit_msg = _render_json_message(data, emoji)
-        commit_msg = _fit_generated_subject(commit_msg, max_subject_chars)
     else:
         commit_msg = clean_thinking_process(raw)
     return validate_commit_message(commit_msg, max_subject_chars)

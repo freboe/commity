@@ -69,6 +69,7 @@ class LLMConfig(BaseModel):
         default=32768, gt=0, description="Maximum tokens accepted by the model context window"
     )
     timeout: int = Field(default=90, gt=0, description="Request timeout in seconds")
+    max_attempts: int = Field(default=3, gt=0, description="Maximum LLM request attempts")
     proxy: str | None = Field(default=None, description="Proxy URL")
     debug: bool = Field(default=False, description="Enable debug mode")
     allow_tools: bool = Field(default=False, description="Allow model repository tool use")
@@ -155,6 +156,7 @@ def get_llm_config(args: Any) -> LLMConfig:
         int,
     )
     timeout = _resolve_config("timeout", args, file_config, 90, int)
+    max_attempts = _resolve_config("max_attempts", args, file_config, 3, int)
     proxy = _resolve_config("proxy", args, file_config, None)
     debug = _resolve_config("debug", args, file_config, default=False, type_cast=_parse_bool)
     allow_tools = _resolve_config(
@@ -174,6 +176,7 @@ def get_llm_config(args: Any) -> LLMConfig:
         max_tokens=max_tokens,
         context_window_tokens=context_window_tokens,
         timeout=timeout,
+        max_attempts=max_attempts,
         proxy=proxy,
         debug=debug,
         allow_tools=allow_tools,

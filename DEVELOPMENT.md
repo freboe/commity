@@ -134,6 +134,64 @@ make pre-commit-run
 - `make run-commity` 提供了一个包含代理与 emoji 的示例调用，可按需修改参数。
 - 构建产物会输出到 `dist/` 目录，该目录已被 `.gitignore` 忽略；发布前可运行 `make clean` 或 `uv run hatch clean` 清理旧包，避免误提交。
 
+### 本地调试
+
+在其他 Git 仓库中调试当前工作区的 Commity 源码时，先进入目标仓库并暂存待分析的
+变更。`uv --project` 只负责选择 Commity 的 Python 项目，CLI 仍会读取当前目录的 Git
+暂存区。
+
+```bash
+# Commity 源码目录
+export COMMITY_PROJECT=~/dev_space/my_github_freboe/commity
+
+# 进入需要生成 commit message 的目标仓库
+cd /path/to/target-repository
+git add <files>
+git diff --cached
+
+# 使用当前 Commity 源码生成中文 commit message
+uv run --project "$COMMITY_PROJECT" commity --language zh
+
+#相当于：
+uv run --project ~/dev_space/my_github_freboe/commity commity --language zh
+```
+
+生成完成后，CLI 会提示选择 `commit`、`edit`、`regenerate` 或 `cancel`。仅查看生成效果时
+选择 `n`（默认选项）取消提交。不要传入 `--confirm n`：该参数表示跳过交互确认并直接
+执行 commit。
+
+如果只需确认跨目录入口是否正确，不调用模型也不读取 Git 暂存区，可以执行：
+
+```bash
+uv run --project "$COMMITY_PROJECT" commity --version
+```
+
+需要频繁调用时，建议在 `~/.zshrc` 或 `~/.bashrc` 中增加一个独立的开发命令，避免与
+通过 `uv tool install commity` 安装的正式版冲突：
+
+```bash
+export COMMITY_PROJECT=~/dev_space/my_github_freboe/commity
+alias commity-dev='uv run --project "$COMMITY_PROJECT" commity'
+
+cd /path/to/target-repository
+commity-dev --language zh
+```
+
+也可以用 editable tool 替换正式版，但二者的工具名和可执行命令都是 `commity`，不能
+并存。先用 `uv tool list` 确认当前安装来源，再执行：
+
+```bash
+uv tool install --editable --force "$COMMITY_PROJECT"
+```
+
+editable 安装会引用当前源码目录，源码修改无需重复安装。调试结束后，卸载本地版本并
+恢复正式版：
+
+```bash
+uv tool uninstall commity
+uv tool install commity
+```
+
 ## 编辑器集成
 
 ### VS Code

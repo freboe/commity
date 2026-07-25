@@ -183,7 +183,8 @@ block comments, and trailing commas. If both files exist, `config.jsonc` takes p
    {
      "PROVIDER": "ollama",
      "MODEL": "llama3",
-     "BASE_URL": "http://localhost:11434"
+1     "BASE_URL": "http://localhost:11434",
+     "MAX_ATTEMPTS": 3
    }
    ```
 

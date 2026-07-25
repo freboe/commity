@@ -182,7 +182,8 @@ export COMMITY_TEMPERATURE=0.5
    {
      "PROVIDER": "ollama",
      "MODEL": "llama3",
-     "BASE_URL": "http://localhost:11434"
+     "BASE_URL": "http://localhost:11434",
+     "MAX_ATTEMPTS": 3
    }
    ```
 

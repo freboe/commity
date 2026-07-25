@@ -15,11 +15,13 @@ from rich.rule import Rule
 
 from commity.commit_message import (
     CommitMessageError,
+    SubjectLengthError,
     parse_generated_commit,
     validate_commit_message,
 )
 from commity.config import LLMConfig, get_llm_config
 from commity.core import (
+    DEFAULT_MAX_SUBJECT_CHARS,
     ChangeGroup,
     detect_change_groups,
     generate_prompt,
@@ -33,6 +35,7 @@ from commity.utils.spinner import spinner
 from commity.utils.token_counter import TOKEN_SAFETY_MARGIN, count_tokens
 
 MAX_TOOL_TOKEN_RESERVE = 8_192
+MAX_SUBJECT_REWRITE_ATTEMPTS = 2
 
 
 def _calculate_diff_token_budget(
@@ -54,6 +57,17 @@ def _is_context_overflow(error: LLMGenerationError) -> bool:
     text = f"{error} {error.details or ''}".lower()
     markers = ("context length", "context window", "too many tokens", "token limit")
     return error.status_code in {400, 413} and any(marker in text for marker in markers)
+
+
+def _subject_rewrite_guidance(error: SubjectLengthError) -> str:
+    return (
+        f"The previous rendered subject was {json.dumps(error.subject)} and exceeded the hard "
+        f"limit. If you keep the same type and scope, the JSON subject field must be at most "
+        f"{error.description_char_budget} characters. You may shorten or remove the scope to "
+        "gain space. Rewrite the complete JSON response with a shorter, self-contained subject "
+        "that preserves the umbrella outcome. Move implementation details to the body. Do not "
+        "truncate the phrase or return the previous subject unchanged."
+    )
 
 
 def _split_commit_message(commit_msg: str) -> list[str]:
@@ -187,10 +201,11 @@ def _create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max_subject_chars",
         type=int,
-        default=50,
+        default=DEFAULT_MAX_SUBJECT_CHARS,
         help="Max characters for the generated commit message (subject)",
     )
     parser.add_argument("--timeout", type=int, help="Timeout in seconds")
+    parser.add_argument("--max_attempts", type=int, help="Maximum LLM request attempts")
     parser.add_argument("--proxy", type=str, help="Proxy URL")
     parser.add_argument("--emoji", action="store_true", help="Include emojis")
     parser.add_argument("--type", type=str, default="conventional", help="Commit style type")
@@ -399,6 +414,7 @@ def _run_generation_workflow(
     diff = initial_diff
     guidance = ""
     context_retry_used = False
+    subject_rewrite_attempts = 0
 
     while True:
         prompt = generate_prompt(
@@ -445,12 +461,31 @@ def _run_generation_workflow(
                 emoji=args.emoji,
             )
         except CommitMessageError as error:
+            if (
+                isinstance(error, SubjectLengthError)
+                and subject_rewrite_attempts < MAX_SUBJECT_REWRITE_ATTEMPTS
+            ):
+                subject_rewrite_attempts += 1
+                print(
+                    f"[yellow]Generated subject is {len(error.subject)} characters; asking the "
+                    f"model to rewrite it ({subject_rewrite_attempts}/"
+                    f"{MAX_SUBJECT_REWRITE_ATTEMPTS}).[/yellow]"
+                )
+                guidance = _subject_rewrite_guidance(error)
+                continue
+            if isinstance(error, SubjectLengthError):
+                _show_commit_message(error.commit_msg)
             if args.confirm == "n":
                 raise
             print(Panel(str(error), title="Invalid generated message", border_style="yellow"))
             retry = Prompt.ask("Regenerate?", choices=["r", "n"], default="r")
             if retry == "r":
-                guidance = str(error)
+                guidance = (
+                    _subject_rewrite_guidance(error)
+                    if isinstance(error, SubjectLengthError)
+                    else str(error)
+                )
+                subject_rewrite_attempts = 0
                 continue
             return
 

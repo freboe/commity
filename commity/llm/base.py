@@ -29,6 +29,7 @@ class BaseLLMClient(ABC):
 
     def __init__(self, config: "LLMConfig") -> None:
         self.config = config
+        self.max_attempts = config.max_attempts
 
     def _get_proxies(self) -> dict[str, str] | None:
         if self.config.proxy:

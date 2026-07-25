@@ -125,6 +125,7 @@ class TestBaseLLMClient:
             provider="ollama",
             base_url="http://localhost:11434",
             model="llama3",
+            max_attempts=2,
         )
         client = OllamaClient(config)
         unavailable = Mock(status_code=503, text="Unavailable")
@@ -136,3 +137,13 @@ class TestBaseLLMClient:
         assert response is success
         assert mock_post.call_count == 2
         mock_sleep.assert_called_once_with(0.5)
+
+    def test_uses_configured_max_attempts(self):
+        config = LLMConfig(
+            provider="ollama",
+            base_url="http://localhost:11434",
+            model="llama3",
+            max_attempts=5,
+        )
+
+        assert OllamaClient(config).max_attempts == 5

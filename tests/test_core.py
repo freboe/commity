@@ -76,7 +76,10 @@ class TestGeneratePrompt:
         assert diff in prompt
         assert "JSON object" in prompt
         assert "primary observable behavior" in prompt
+        assert "single invariant, outcome, or user-facing behavior" in prompt
+        assert "umbrella outcome in the subject" in prompt
         assert "tests as evidence of intended behavior" in prompt
+        assert "must not exceed 60 characters" in prompt
 
     def test_generate_prompt_with_language(self):
         """Test prompt generation with custom language."""
@@ -118,7 +121,8 @@ class TestGeneratePrompt:
         prompt = generate_prompt(diff, max_subject_chars=72)
 
         assert "72 characters" in prompt
-        assert "JSON subject field within 52 characters" in prompt
+        assert "within 50 characters" in prompt
+        assert "JSON subject field within" not in prompt
 
     def test_generate_prompt_all_options(self):
         """Test prompt generation with all options."""
@@ -173,7 +177,8 @@ index 1234567..abcdefg 100644
         )
 
         assert "Repository Context:\nProject: commity" in prompt
-        assert "Additional User Guidance:\nFocus on validation" in prompt
+        assert "Final Generation Guidance:\nFocus on validation" in prompt
+        assert prompt.index("Git Diff:\ndiff") < prompt.index("Final Generation Guidance:")
 
 
 class TestRepositoryContext:
