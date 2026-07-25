@@ -17,14 +17,15 @@ from commity.commit_message import (
     parse_generated_commit,
     validate_commit_message,
 )
-from commity.config import get_llm_config
+from commity.config import LLMConfig, get_llm_config
 from commity.core import (
+    ChangeGroup,
     detect_change_groups,
     generate_prompt,
     get_git_diff,
     get_repository_context,
 )
-from commity.llm import LLMGenerationError, llm_client_factory
+from commity.llm import BaseLLMClient, LLMGenerationError, llm_client_factory
 from commity.repository_tools import ReadOnlyRepositoryTools
 from commity.utils.prompt_organizer import summary_and_tokens_checker
 from commity.utils.spinner import spinner
@@ -153,11 +154,12 @@ def _show_tool_use(tool_name: str) -> None:
     print(f"[cyan]🔍 Model is using repository tool:[/cyan] [bold]{tool_name}[/bold]")
 
 
-def main() -> None:
+def _create_argument_parser() -> argparse.ArgumentParser:
     try:
         version = metadata.version("commity")
     except metadata.PackageNotFoundError:
         version = "unknown"
+
     parser = argparse.ArgumentParser(description="AI-powered git commit message generator")
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {version}")
     parser.add_argument("--provider", type=str, help="LLM provider")
@@ -214,61 +216,52 @@ def main() -> None:
         choices=["y", "n"],
         help="Confirm before committing (y/n)",
     )
+    return parser
 
-    args = parser.parse_args()
-    config = get_llm_config(args)
 
-    if args.show_config:
-        config_dict = {k: v for k, v in config.__dict__.items() if v is not None}
-        if config_dict.get("api_key"):
-            config_dict["api_key"] = "***"
-        print(
-            Panel(
-                str(config_dict),
-                title="[bold blue]✅ Current Configuration[/bold blue]",
-                border_style="blue",
-            )
+def _show_config(config: LLMConfig) -> None:
+    config_dict = {key: value for key, value in config.__dict__.items() if value is not None}
+    if config_dict.get("api_key"):
+        config_dict["api_key"] = "***"
+    print(
+        Panel(
+            str(config_dict),
+            title="[bold blue]✅ Current Configuration[/bold blue]",
+            border_style="blue",
         )
-        return
-
-    client = llm_client_factory(config)
-
-    original_diff = get_git_diff()
-    if not original_diff:
-        print(
-            Panel(
-                "[bold yellow]⚠️ No staged changes detected.[/bold yellow]",
-                title="[bold yellow]Warning[/bold yellow]",
-                border_style="yellow",
-            )
-        )
-        return
-
-    change_groups = detect_change_groups(original_diff)
-    if len(change_groups) > 1:
-        group_summary = "\n".join(
-            f"- {group.name}: {', '.join(group.files)}" for group in change_groups
-        )
-        print(
-            Panel(
-                "Potentially independent staged changes were detected:\n" + group_summary,
-                title="Consider splitting this commit",
-                border_style="yellow",
-            )
-        )
-        if args.confirm == "y":
-            proceed = Prompt.ask(
-                "Generate one message for all staged changes?", choices=["y", "n"], default="y"
-            )
-            if proceed == "n":
-                return
-
-    repository_context = get_repository_context()
-    repository_tools = (
-        ReadOnlyRepositoryTools(config.allowed_tools, on_tool_use=_show_tool_use)
-        if config.allow_tools
-        else None
     )
+
+
+def _confirm_combined_changes(change_groups: list[ChangeGroup], confirm: str) -> bool:
+    if len(change_groups) <= 1:
+        return True
+
+    group_summary = "\n".join(
+        f"- {group.name}: {', '.join(group.files)}" for group in change_groups
+    )
+    print(
+        Panel(
+            "Potentially independent staged changes were detected:\n" + group_summary,
+            title="Consider splitting this commit",
+            border_style="yellow",
+        )
+    )
+    if confirm == "n":
+        return True
+
+    proceed = Prompt.ask(
+        "Generate one message for all staged changes?", choices=["y", "n"], default="y"
+    )
+    return proceed == "y"
+
+
+def _compress_diff(
+    args: argparse.Namespace,
+    config: LLMConfig,
+    original_diff: str,
+    repository_context: str,
+    change_groups: list[ChangeGroup],
+) -> str:
     base_prompt = generate_prompt(
         "",
         language=args.language,
@@ -278,7 +271,6 @@ def main() -> None:
         repository_context=repository_context,
     )
     system_prompt_tokens = count_tokens(base_prompt, config.model, config.provider)
-
     diff_token_budget = _calculate_diff_token_budget(
         config.context_window_tokens,
         config.max_tokens,
@@ -311,117 +303,212 @@ def main() -> None:
         }
         print(Panel(str(diagnostics), title="Debug diagnostics", border_style="blue"))
 
-    try:
-        guidance = ""
-        context_retry_used = False
-        while True:
-            prompt = generate_prompt(
-                diff,
-                language=args.language,
-                emoji=args.emoji,
-                type_=args.type,
-                max_subject_chars=args.max_subject_chars,
-                repository_context=repository_context,
-                guidance=guidance,
+    return diff
+
+
+def _generate_raw_message(
+    client: BaseLLMClient,
+    repository_tools: ReadOnlyRepositoryTools | None,
+    prompt: str,
+) -> str | None:
+    with spinner("🚀 Generating commit message..."):
+        if repository_tools is None:
+            return client.generate(prompt)
+        return client.generate_with_tools(prompt, repository_tools)
+
+
+def _handle_commit_actions(
+    commit_msg: str,
+    confirm: str,
+    max_subject_chars: int,
+) -> str | None:
+    """Commit the message or return guidance when regeneration is requested."""
+    _show_commit_message(commit_msg)
+    while True:
+        action = "c"
+        if confirm == "y":
+            action = Prompt.ask(
+                "Choose an action: commit, edit, regenerate, or cancel",
+                choices=["c", "e", "r", "n"],
+                default="n",
             )
-            try:
-                with spinner("🚀 Generating commit message..."):
-                    if repository_tools is None:
-                        raw_message = client.generate(prompt)
-                    else:
-                        raw_message = client.generate_with_tools(prompt, repository_tools)
-            except LLMGenerationError as error:
-                if not context_retry_used and _is_context_overflow(error):
-                    reduced_budget = max(
-                        count_tokens(diff, config.model, config.provider) // 2, 100
-                    )
-                    diff = summary_and_tokens_checker(
-                        original_diff,
-                        max_output_tokens=reduced_budget,
-                        model_name=config.model,
-                        provider=config.provider,
-                    )
-                    context_retry_used = True
-                    guidance = "Keep the response concise because the model context is limited."
-                    if config.debug:
-                        print(
-                            Panel(
-                                f"Context overflow detected; retrying with {reduced_budget} "
-                                "diff tokens.",
-                                title="Debug diagnostics",
-                                border_style="blue",
-                            )
-                        )
-                    continue
-                raise
-            if not raw_message:
-                raise CommitMessageError("model returned an empty response")
 
+        if action == "r":
+            return Prompt.ask("Optional guidance for regeneration", default="", show_default=False)
+        if action == "e":
+            edited = _edit_commit_message(commit_msg)
             try:
-                commit_msg = parse_generated_commit(
-                    raw_message,
-                    max_subject_chars=args.max_subject_chars,
-                    emoji=args.emoji,
-                )
+                commit_msg = validate_commit_message(edited, max_subject_chars)
             except CommitMessageError as error:
-                if args.confirm == "n":
-                    raise
-                print(Panel(str(error), title="Invalid generated message", border_style="yellow"))
-                retry = Prompt.ask("Regenerate?", choices=["r", "n"], default="r")
-                if retry == "r":
-                    guidance = str(error)
-                    continue
-                return
-
+                print(Panel(str(error), title="Invalid edited message", border_style="yellow"))
+                continue
             _show_commit_message(commit_msg)
-            while True:
-                action = "c"
-                if args.confirm == "y":
-                    action = Prompt.ask(
-                        "Choose an action: commit, edit, regenerate, or cancel",
-                        choices=["c", "e", "r", "n"],
-                        default="n",
-                    )
+            if confirm == "y":
+                action = Prompt.ask("Commit the edited message?", choices=["c", "n"], default="n")
+        if action == "n":
+            print(
+                Panel(
+                    "[bold yellow]Commit cancelled.[/bold yellow]",
+                    title="[bold yellow]Cancelled[/bold yellow]",
+                    border_style="yellow",
+                )
+            )
+            return None
+        if action == "c":
+            if not _run_commit(commit_msg):
+                if confirm == "n":
+                    return None
+                continue
+            push_input = Prompt.ask("Do you want to push changes?", choices=["y", "n"], default="n")
+            if push_input.lower() == "y":
+                _run_push()
+            return None
 
-                if action == "r":
-                    guidance = Prompt.ask(
-                        "Optional guidance for regeneration", default="", show_default=False
+
+def _run_generation_workflow(
+    args: argparse.Namespace,
+    config: LLMConfig,
+    client: BaseLLMClient,
+    repository_tools: ReadOnlyRepositoryTools | None,
+    original_diff: str,
+    initial_diff: str,
+    repository_context: str,
+) -> None:
+    diff = initial_diff
+    guidance = ""
+    context_retry_used = False
+
+    while True:
+        prompt = generate_prompt(
+            diff,
+            language=args.language,
+            emoji=args.emoji,
+            type_=args.type,
+            max_subject_chars=args.max_subject_chars,
+            repository_context=repository_context,
+            guidance=guidance,
+        )
+        try:
+            raw_message = _generate_raw_message(client, repository_tools, prompt)
+        except LLMGenerationError as error:
+            if context_retry_used or not _is_context_overflow(error):
+                raise
+
+            reduced_budget = max(count_tokens(diff, config.model, config.provider) // 2, 100)
+            diff = summary_and_tokens_checker(
+                original_diff,
+                max_output_tokens=reduced_budget,
+                model_name=config.model,
+                provider=config.provider,
+            )
+            context_retry_used = True
+            guidance = "Keep the response concise because the model context is limited."
+            if config.debug:
+                print(
+                    Panel(
+                        f"Context overflow detected; retrying with {reduced_budget} diff tokens.",
+                        title="Debug diagnostics",
+                        border_style="blue",
                     )
-                    break
-                if action == "e":
-                    edited = _edit_commit_message(commit_msg)
-                    try:
-                        commit_msg = validate_commit_message(edited, args.max_subject_chars)
-                    except CommitMessageError as error:
-                        print(
-                            Panel(str(error), title="Invalid edited message", border_style="yellow")
-                        )
-                        continue
-                    _show_commit_message(commit_msg)
-                    if args.confirm == "y":
-                        action = Prompt.ask(
-                            "Commit the edited message?", choices=["c", "n"], default="n"
-                        )
-                if action == "n":
-                    print(
-                        Panel(
-                            "[bold yellow]Commit cancelled.[/bold yellow]",
-                            title="[bold yellow]Cancelled[/bold yellow]",
-                            border_style="yellow",
-                        )
-                    )
-                    return
-                if action == "c":
-                    if not _run_commit(commit_msg):
-                        if args.confirm == "n":
-                            return
-                        continue
-                    push_input = Prompt.ask(
-                        "Do you want to push changes?", choices=["y", "n"], default="n"
-                    )
-                    if push_input.lower() == "y":
-                        _run_push()
-                    return
+                )
+            continue
+
+        if not raw_message:
+            raise CommitMessageError("model returned an empty response")
+
+        try:
+            commit_msg = parse_generated_commit(
+                raw_message,
+                max_subject_chars=args.max_subject_chars,
+                emoji=args.emoji,
+            )
+        except CommitMessageError as error:
+            if args.confirm == "n":
+                raise
+            print(Panel(str(error), title="Invalid generated message", border_style="yellow"))
+            retry = Prompt.ask("Regenerate?", choices=["r", "n"], default="r")
+            if retry == "r":
+                guidance = str(error)
+                continue
+            return
+
+        regeneration_guidance = _handle_commit_actions(
+            commit_msg,
+            confirm=args.confirm,
+            max_subject_chars=args.max_subject_chars,
+        )
+        if regeneration_guidance is None:
+            return
+        guidance = regeneration_guidance
+
+
+def _show_llm_error(error: LLMGenerationError) -> None:
+    from rich.markup import escape
+
+    details = []
+    if error.status_code is not None:
+        details.append(f"Status: {error.status_code}")
+    if error.details:
+        details.append(error.details.strip())
+    error_message = escape("\n".join(details) or str(error))
+    print(
+        Panel(
+            "❌ LLM request failed:\n" + error_message,
+            title="Error",
+            border_style="red",
+        )
+    )
+
+
+def main() -> None:
+    parser = _create_argument_parser()
+    args = parser.parse_args()
+    config = get_llm_config(args)
+
+    if args.show_config:
+        _show_config(config)
+        return
+
+    client = llm_client_factory(config)
+    original_diff = get_git_diff()
+    if not original_diff:
+        print(
+            Panel(
+                "[bold yellow]⚠️ No staged changes detected.[/bold yellow]",
+                title="[bold yellow]Warning[/bold yellow]",
+                border_style="yellow",
+            )
+        )
+        return
+
+    change_groups = detect_change_groups(original_diff)
+    if not _confirm_combined_changes(change_groups, args.confirm):
+        return
+
+    repository_context = get_repository_context()
+    repository_tools = (
+        ReadOnlyRepositoryTools(config.allowed_tools, on_tool_use=_show_tool_use)
+        if config.allow_tools
+        else None
+    )
+    diff = _compress_diff(
+        args,
+        config,
+        original_diff,
+        repository_context,
+        change_groups,
+    )
+
+    try:
+        _run_generation_workflow(
+            args,
+            config,
+            client,
+            repository_tools,
+            original_diff,
+            diff,
+            repository_context,
+        )
     except (EOFError, KeyboardInterrupt):
         print(
             Panel(
@@ -430,26 +517,12 @@ def main() -> None:
                 border_style="yellow",
             )
         )
-    except LLMGenerationError as e:
+    except LLMGenerationError as error:
+        _show_llm_error(error)
+    except Exception as error:
         from rich.markup import escape
 
-        details = []
-        if e.status_code is not None:
-            details.append(f"Status: {e.status_code}")
-        if e.details:
-            details.append(e.details.strip())
-        error_message = escape("\n".join(details) or str(e))
-        print(
-            Panel(
-                "❌ LLM request failed:\n" + error_message,
-                title="Error",
-                border_style="red",
-            )
-        )
-    except Exception as e:
-        from rich.markup import escape
-
-        error_message = escape(str(e))
+        error_message = escape(str(error))
         print(Panel("❌ An error occurred: " + error_message, title="Error", border_style="red"))
 
 
