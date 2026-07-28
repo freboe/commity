@@ -467,6 +467,7 @@ def _run_generation_workflow(
                 and subject_rewrite_attempts < MAX_SUBJECT_REWRITE_ATTEMPTS
             ):
                 subject_rewrite_attempts += 1
+                _show_commit_message(error.commit_msg)
                 print(
                     f"[yellow]Generated subject is {len(error.subject)} characters; asking the "
                     f"model to rewrite it ({subject_rewrite_attempts}/"

@@ -228,6 +228,7 @@ def test_generation_workflow_rewrites_overlong_subject_once(mocker):
         "generate_prompt",
         side_effect=lambda _diff, **kwargs: kwargs["guidance"],
     )
+    show_message = mocker.patch.object(cli, "_show_commit_message")
     output = mocker.patch.object(cli, "print")
     actions = mocker.patch.object(cli, "_handle_commit_actions", return_value=None)
 
@@ -250,6 +251,9 @@ def test_generation_workflow_rewrites_overlong_subject_once(mocker):
     assert '"subject is 49 characters; maximum is 40"' in retry_guidance
     assert "JSON subject field must be at most 21 characters" in retry_guidance
     assert "preserves the umbrella outcome" in retry_guidance
+    show_message.assert_called_once_with(
+        "fix(token-budget): truncate tool and diff outputs\n\nKeep useful implementation details."
+    )
     assert "asking the model to rewrite it (1/2)" in output.call_args.args[0]
     actions.assert_called_once_with(
         "fix(budget): enforce context limits",
@@ -289,7 +293,11 @@ def test_generation_workflow_rejects_subject_after_bounded_rewrites(mocker):
     )
 
     assert generate.call_count == 3
-    show_message.assert_called_once_with("fix(budget): enforce strict context window limits")
+    assert show_message.call_args_list == [
+        mocker.call("fix(budget): enforce strict context window limits"),
+        mocker.call("fix(budget): enforce strict context window limits"),
+        mocker.call("fix(budget): enforce strict context window limits"),
+    ]
     actions.assert_not_called()
 
 
