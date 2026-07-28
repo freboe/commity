@@ -7,13 +7,14 @@ import commity.cli as cli
 from commity.cli import (
     _compress_diff,
     _confirm_combined_changes,
+    _confirm_sensitive_data,
     _create_argument_parser,
     _handle_commit_actions,
     _run_generation_workflow,
     _show_config,
 )
 from commity.core import ChangeGroup
-from commity.llm import LLMGenerationError
+from commity.llm import LLMGenerationError, SensitiveDataError
 
 
 def test_subject_limit_defaults_to_60_and_accepts_override():
@@ -233,6 +234,51 @@ def test_generation_workflow_retries_context_overflow_once(mocker):
         "fix: handle overflow",
         confirm="n",
         max_subject_chars=50,
+    )
+
+
+def test_sensitive_data_confirmation_retries_once_after_explicit_consent(mocker):
+    args = SimpleNamespace(
+        language="en",
+        emoji=False,
+        type="conventional",
+        max_subject_chars=50,
+        confirm="n",
+    )
+    config = SimpleNamespace(debug=False, model="test-model", provider="ollama")
+    client = mocker.Mock()
+    generate = mocker.patch.object(
+        cli,
+        "_generate_raw_message",
+        side_effect=[SensitiveDataError("Sensitive data detected"), '{"type":"fix"}'],
+    )
+    mocker.patch.object(cli, "_confirm_sensitive_data", return_value=True)
+    mocker.patch.object(cli, "parse_generated_commit", return_value="fix: send after consent")
+    mocker.patch.object(cli, "_handle_commit_actions", return_value=None)
+
+    _run_generation_workflow(
+        args,
+        config,
+        client,
+        None,
+        "original diff",
+        "initial diff",
+        "repository",
+    )
+
+    assert generate.call_count == 2
+    client.allow_sensitive_request_once.assert_called_once_with()
+
+
+def test_sensitive_data_confirmation_defaults_to_no(mocker):
+    error = SensitiveDataError("Sensitive data detected")
+    output = mocker.patch.object(cli, "print")
+    prompt = mocker.patch.object(cli.Prompt, "ask", return_value="n")
+
+    assert _confirm_sensitive_data(error) is False
+    assert "The request was not sent" in str(output.call_args.args[0].renderable)
+    prompt.assert_called_once_with(
+        "Sensitive data may be sent to the LLM. Continue?", choices=["y", "n"], default="n"
     )
 
 

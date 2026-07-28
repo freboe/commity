@@ -8,7 +8,7 @@ To add a new provider:
 4. Export it here if needed
 """
 
-from commity.llm.base import BaseLLMClient, LLMGenerationError
+from commity.llm.base import BaseLLMClient, LLMGenerationError, SensitiveDataError
 from commity.llm.factory import LLM_CLIENTS, llm_client_factory
 from commity.llm.gemini import GeminiClient
 from commity.llm.nvidia import NvidiaClient
@@ -25,5 +25,6 @@ __all__ = [
     "OllamaClient",
     "OpenAIClient",
     "OpenRouterClient",
+    "SensitiveDataError",
     "llm_client_factory",
 ]

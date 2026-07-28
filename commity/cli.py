@@ -28,7 +28,7 @@ from commity.core import (
     get_git_diff,
     get_repository_context,
 )
-from commity.llm import BaseLLMClient, LLMGenerationError, llm_client_factory
+from commity.llm import BaseLLMClient, LLMGenerationError, SensitiveDataError, llm_client_factory
 from commity.repository_tools import ReadOnlyRepositoryTools
 from commity.utils.prompt_organizer import summary_and_tokens_checker
 from commity.utils.spinner import spinner
@@ -57,6 +57,27 @@ def _is_context_overflow(error: LLMGenerationError) -> bool:
     text = f"{error} {error.details or ''}".lower()
     markers = ("context length", "context window", "too many tokens", "token limit")
     return error.status_code in {400, 413} and any(marker in text for marker in markers)
+
+
+def _confirm_sensitive_data(error: SensitiveDataError) -> bool:
+    """Require explicit consent before sending a flagged request."""
+    from rich.markup import escape
+
+    print(
+        Panel(
+            "⚠️ Sensitive data detected. The request was not sent:\n" + escape(str(error)),
+            title="Sensitive data",
+            border_style="yellow",
+        )
+    )
+    return (
+        Prompt.ask(
+            "Sensitive data may be sent to the LLM. Continue?",
+            choices=["y", "n"],
+            default="n",
+        )
+        == "y"
+    )
 
 
 def _subject_rewrite_guidance(error: SubjectLengthError) -> str:
@@ -441,6 +462,11 @@ def _run_generation_workflow(
         try:
             raw_message = _generate_raw_message(client, repository_tools, prompt)
         except LLMGenerationError as error:
+            if isinstance(error, SensitiveDataError):
+                if _confirm_sensitive_data(error):
+                    client.allow_sensitive_request_once()
+                    continue
+                return
             if context_retry_used or not _is_context_overflow(error):
                 raise
 

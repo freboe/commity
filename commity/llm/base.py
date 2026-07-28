@@ -6,6 +6,12 @@ from typing import TYPE_CHECKING
 
 import requests
 
+from commity.sensitive_data import (
+    SensitiveDataMatch,
+    find_sensitive_data,
+    find_sensitive_data_matches,
+)
+
 if TYPE_CHECKING:
     from commity.config import LLMConfig
     from commity.repository_tools import ReadOnlyRepositoryTools
@@ -20,6 +26,10 @@ class LLMGenerationError(Exception):
         self.details = details
 
 
+class SensitiveDataError(LLMGenerationError):
+    """Raised when an LLM request contains credential-like data."""
+
+
 class BaseLLMClient(ABC):
     """Base class for all LLM clients."""
 
@@ -30,6 +40,11 @@ class BaseLLMClient(ABC):
     def __init__(self, config: "LLMConfig") -> None:
         self.config = config
         self.max_attempts = config.max_attempts
+        self._allow_sensitive_request_once = False
+
+    def allow_sensitive_request_once(self) -> None:
+        """Allow exactly one explicitly confirmed sensitive request."""
+        self._allow_sensitive_request_once = True
 
     def _get_proxies(self) -> dict[str, str] | None:
         if self.config.proxy:
@@ -54,6 +69,20 @@ class BaseLLMClient(ABC):
 
     def _make_request(self, url: str, payload: dict, headers: dict) -> requests.Response:
         """通用的请求方法，处理所有客户端的共同逻辑。"""
+        request_text = _payload_text(payload)
+        findings = find_sensitive_data(request_text)
+        if findings and not self._allow_sensitive_request_once:
+            details = "\n".join(
+                f"- {match.category}: {match.content}{_format_location(match)}"
+                for match in find_sensitive_data_matches(request_text)
+            )
+            raise SensitiveDataError(
+                "Sensitive data detected in the LLM request: "
+                + ", ".join(findings)
+                + (f"\n{details}" if details else "")
+            )
+        self._allow_sensitive_request_once = False
+
         for attempt in range(self.max_attempts):
             try:
                 response = requests.post(
@@ -90,3 +119,21 @@ class BaseLLMClient(ABC):
         self, prompt: str, _repository_tools: "ReadOnlyRepositoryTools"
     ) -> str | None:
         return self.generate(prompt)
+
+
+def _payload_text(value: object) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return "\n".join(_payload_text(item) for item in value.values())
+    if isinstance(value, (list, tuple)):
+        return "\n".join(_payload_text(item) for item in value)
+    return ""
+
+
+def _format_location(match: SensitiveDataMatch) -> str:
+    if match.path is None:
+        return ""
+    if match.line is None:
+        return f" ({match.path})"
+    return f" ({match.path}:{match.line})"
