@@ -61,12 +61,13 @@ def _is_context_overflow(error: LLMGenerationError) -> bool:
 
 def _subject_rewrite_guidance(error: SubjectLengthError) -> str:
     return (
-        f"The previous rendered subject was {json.dumps(error.subject)} and exceeded the hard "
-        f"limit. If you keep the same type and scope, the JSON subject field must be at most "
-        f"{error.description_char_budget} characters. You may shorten or remove the scope to "
-        "gain space. Rewrite the complete JSON response with a shorter, self-contained subject "
-        "that preserves the umbrella outcome. Move implementation details to the body. Do not "
-        "truncate the phrase or return the previous subject unchanged."
+        f"The previous generated commit message was {json.dumps(error.commit_msg)}. "
+        f"It failed validation with this exact error: {json.dumps(str(error))}. "
+        "Correct that validation failure. If you keep the same type and scope, the JSON subject "
+        f"field must be at most {error.description_char_budget} characters. You may shorten or "
+        "remove the scope to gain space. Rewrite the complete JSON response with a shorter, "
+        "self-contained subject that preserves the umbrella outcome. Preserve useful body "
+        "details. Do not truncate the phrase or return the previous subject unchanged."
     )
 
 

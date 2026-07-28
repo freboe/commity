@@ -217,7 +217,8 @@ def test_generation_workflow_rewrites_overlong_subject_once(mocker):
         side_effect=[
             (
                 '{"type":"fix","scope":"token-budget",'
-                '"subject":"truncate tool and diff outputs","body":[]}'
+                '"subject":"truncate tool and diff outputs",'
+                '"body":["Keep useful implementation details."]}'
             ),
             ('{"type":"fix","scope":"budget","subject":"enforce context limits","body":[]}'),
         ],
@@ -242,7 +243,11 @@ def test_generation_workflow_rewrites_overlong_subject_once(mocker):
 
     assert generate.call_count == 2
     retry_guidance = prompts.call_args_list[1].kwargs["guidance"]
-    assert '"fix(token-budget): truncate tool and diff outputs"' in retry_guidance
+    assert (
+        '"fix(token-budget): truncate tool and diff outputs\\n\\n'
+        'Keep useful implementation details."' in retry_guidance
+    )
+    assert '"subject is 49 characters; maximum is 40"' in retry_guidance
     assert "JSON subject field must be at most 21 characters" in retry_guidance
     assert "preserves the umbrella outcome" in retry_guidance
     assert "asking the model to rewrite it (1/2)" in output.call_args.args[0]
