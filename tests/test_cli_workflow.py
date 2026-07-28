@@ -21,6 +21,41 @@ def test_subject_limit_defaults_to_60_and_accepts_override():
 
     assert parser.parse_args([]).max_subject_chars == 60
     assert parser.parse_args(["--max_subject_chars", "72"]).max_subject_chars == 72
+    assert parser.parse_args(["-y"]).yes is True
+
+
+def test_yes_commits_and_pushes_without_prompts(mocker):
+    config = SimpleNamespace(
+        context_window_tokens=32768,
+        debug=False,
+        max_tokens=500,
+        model="test-model",
+        provider="ollama",
+        allow_tools=False,
+        allowed_tools=None,
+    )
+    client = mocker.Mock()
+    client.generate.return_value = '{"type":"fix"}'
+
+    mocker.patch("sys.argv", ["commity", "-y"])
+    mocker.patch.object(cli, "get_llm_config", return_value=config)
+    mocker.patch.object(cli, "llm_client_factory", return_value=client)
+    mocker.patch.object(cli, "get_git_diff", return_value="diff")
+    mocker.patch.object(cli, "detect_change_groups", return_value=[])
+    mocker.patch.object(cli, "get_repository_context", return_value="")
+    mocker.patch.object(cli, "count_tokens", return_value=10)
+    mocker.patch.object(cli, "summary_and_tokens_checker", return_value="diff")
+    mocker.patch.object(cli, "parse_generated_commit", return_value="fix: push automatically")
+    mocker.patch.object(cli, "spinner", side_effect=lambda _text: nullcontext())
+    commit = mocker.patch.object(cli, "_run_commit", return_value=True)
+    push = mocker.patch.object(cli, "_run_push", return_value=True)
+    prompt = mocker.patch.object(cli.Prompt, "ask")
+
+    cli.main()
+
+    commit.assert_called_once_with("fix: push automatically")
+    push.assert_called_once_with()
+    prompt.assert_not_called()
 
 
 def test_commit_failure_keeps_generated_message(mocker):

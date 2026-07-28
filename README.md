@@ -274,6 +274,9 @@ commity --provider nvidia --model nvidia/llama-3.1-nemotron-70b-instruct --api_k
 # Skip interactive confirmation and commit immediately
 commity --confirm n
 
+# Generate, commit, and push without interactive confirmation
+commity -y
+
 # Run via Python module entry point
 python -m commity --language zh --emoji
 ```

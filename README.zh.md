@@ -272,6 +272,9 @@ commity --provider nvidia --model nvidia/llama-3.1-nemotron-70b-instruct --api_k
 # 跳过交互确认并直接提交
 commity --confirm n
 
+# 无需交互地生成、提交并推送
+commity -y
+
 # 通过模块入口运行
 python -m commity --language zh --emoji
 

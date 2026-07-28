@@ -210,6 +210,12 @@ def _create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--proxy", type=str, help="Proxy URL")
     parser.add_argument("--emoji", action="store_true", help="Include emojis")
     parser.add_argument("--type", type=str, default="conventional", help="Commit style type")
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Commit and push without interactive confirmation",
+    )
     parser.add_argument("--show-config", action="store_true", help="Show current configuration")
     parser.add_argument(
         "--debug",
@@ -359,6 +365,7 @@ def _handle_commit_actions(
     commit_msg: str,
     confirm: str,
     max_subject_chars: int,
+    auto_push: bool = False,
 ) -> str | None:
     """Commit the message or return guidance when regeneration is requested."""
     _show_commit_message(commit_msg)
@@ -397,6 +404,9 @@ def _handle_commit_actions(
                 if confirm == "n":
                     return None
                 continue
+            if auto_push:
+                _run_push()
+                return None
             push_input = Prompt.ask("Do you want to push changes?", choices=["y", "n"], default="n")
             if push_input.lower() == "y":
                 _run_push()
@@ -411,6 +421,7 @@ def _run_generation_workflow(
     original_diff: str,
     initial_diff: str,
     repository_context: str,
+    auto_push: bool = False,
 ) -> None:
     diff = initial_diff
     guidance = ""
@@ -491,11 +502,13 @@ def _run_generation_workflow(
                 continue
             return
 
-        regeneration_guidance = _handle_commit_actions(
-            commit_msg,
-            confirm=args.confirm,
-            max_subject_chars=args.max_subject_chars,
-        )
+        action_kwargs = {
+            "confirm": args.confirm,
+            "max_subject_chars": args.max_subject_chars,
+        }
+        if auto_push:
+            action_kwargs["auto_push"] = True
+        regeneration_guidance = _handle_commit_actions(commit_msg, **action_kwargs)
         if regeneration_guidance is None:
             return
         guidance = regeneration_guidance
@@ -522,6 +535,8 @@ def _show_llm_error(error: LLMGenerationError) -> None:
 def main() -> None:
     parser = _create_argument_parser()
     args = parser.parse_args()
+    if args.yes:
+        args.confirm = "n"
     config = get_llm_config(args)
 
     if args.show_config:
@@ -567,6 +582,7 @@ def main() -> None:
             original_diff,
             diff,
             repository_context,
+            auto_push=args.yes,
         )
     except (EOFError, KeyboardInterrupt):
         print(
