@@ -1,5 +1,4 @@
 import subprocess
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -60,34 +59,9 @@ def _run_git(args: list[str]) -> str:
 
 
 def get_repository_context() -> str:
-    """Collect compact repository facts that improve commit message accuracy."""
+    """Collect context derived only from the staged changes."""
     try:
-        root = Path(_run_git(["rev-parse", "--show-toplevel"]))
         sections = []
-
-        pyproject = root / "pyproject.toml"
-        if pyproject.exists():
-            with pyproject.open("rb") as file:
-                project = tomllib.load(file).get("project", {})
-            name = project.get("name")
-            description = project.get("description")
-            if name or description:
-                sections.append(
-                    f"Project: {name or root.name}\nPurpose: {description or 'unknown'}"
-                )
-
-        readme = next(
-            (path for path in (root / "README.md", root / "README.rst") if path.exists()),
-            None,
-        )
-        if readme:
-            excerpt = readme.read_text(encoding="utf-8", errors="replace")[:800].strip()
-            if excerpt:
-                sections.append("README excerpt:\n" + excerpt)
-
-        history = _run_git(["log", "-n", "12", "--format=%s"])
-        if history:
-            sections.append("Recent commit subjects:\n" + history)
 
         name_status = _run_git(["diff", "--staged", "--name-status"])
         stat = _run_git(["diff", "--staged", "--stat"])
@@ -97,7 +71,7 @@ def get_repository_context() -> str:
             sections.append("Change statistics:\n" + stat)
 
         return "\n\n".join(sections)
-    except (OSError, subprocess.CalledProcessError, tomllib.TOMLDecodeError):
+    except (OSError, subprocess.CalledProcessError):
         return ""
 
 

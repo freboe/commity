@@ -283,7 +283,7 @@ python -m commity --language zh --emoji
 
 In interactive mode, choose `c` to commit, `e` to edit the generated
 message in your Git editor, `r` to regenerate it with optional guidance,
-or `n` to cancel. Commity uses the repository description, recent commit
-subjects, and staged-file metadata to improve the generated message.
+or `n` to cancel. Commity uses only the staged diff and staged-file metadata
+to generate the message.
 When code, build, CI, and documentation changes appear independently,
 Commity warns before generating one combined message.

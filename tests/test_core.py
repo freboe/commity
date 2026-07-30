@@ -1,7 +1,7 @@
 """Tests for core module."""
 
 import subprocess
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 from commity.core import generate_prompt, get_git_diff, get_repository_context
 
@@ -182,7 +182,27 @@ index 1234567..abcdefg 100644
 
 
 class TestRepositoryContext:
-    """Tests for compact repository context collection."""
+    """Tests for staged-only repository context collection."""
+
+    @patch("commity.core._run_git")
+    def test_uses_only_staged_metadata(self, mock_git):
+        mock_git.side_effect = [
+            "M\tcommity/core.py",
+            " commity/core.py | 20 +-------------------\n 1 file changed, 1 insertion(+), 19 deletions(-)",
+        ]
+
+        context = get_repository_context()
+
+        assert context == (
+            "Staged files:\nM\tcommity/core.py\n\n"
+            "Change statistics:\n"
+            " commity/core.py | 20 +-------------------\n"
+            " 1 file changed, 1 insertion(+), 19 deletions(-)"
+        )
+        assert mock_git.call_args_list == [
+            call(["diff", "--staged", "--name-status"]),
+            call(["diff", "--staged", "--stat"]),
+        ]
 
     @patch("commity.core._run_git")
     def test_returns_empty_context_when_git_fails(self, mock_git):
