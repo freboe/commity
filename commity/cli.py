@@ -245,6 +245,14 @@ def _create_argument_parser() -> argparse.ArgumentParser:
         help="Show prompt budgeting and diff compression diagnostics",
     )
     parser.add_argument(
+        "--disable-thinking",
+        "--disable_thinking",
+        dest="disable_thinking",
+        action="store_true",
+        default=None,
+        help="Disable thinking for supported BigModel GLM models",
+    )
+    parser.add_argument(
         "--allow_tools",
         action="store_true",
         default=None,

@@ -34,6 +34,7 @@ class TestLLMConfig:
         assert config.temperature == 0.2  # default
         assert config.max_tokens == 512  # default
         assert config.context_window_tokens == 32768
+        assert config.disable_thinking is False
         assert config.allow_tools is False
         assert config.allowed_tools is None
 
@@ -49,6 +50,7 @@ class TestLLMConfig:
             timeout=30,
             proxy="http://proxy:8080",
             debug=True,
+            disable_thinking=False,
             allow_tools=True,
             allowed_tools=["read_file", "get_commit"],
         )
@@ -59,6 +61,7 @@ class TestLLMConfig:
         assert config.timeout == 30
         assert config.proxy == "http://proxy:8080"
         assert config.debug is True
+        assert config.disable_thinking is False
         assert config.allow_tools is True
         assert config.allowed_tools == ["read_file", "get_commit"]
 
@@ -186,6 +189,30 @@ class TestLLMConfig:
         )
         assert config.api_key is None
 
+    def test_disable_thinking_rejects_unsupported_model(self):
+        with pytest.raises(
+            ValidationError,
+            match=r"disable_thinking is only supported for GLM-4.5\+ models",
+        ):
+            LLMConfig(
+                provider="openai",
+                base_url="https://api.openai.com/v1",
+                model="gpt-4o",
+                api_key="test-key",
+                disable_thinking=True,
+            )
+
+    def test_disable_thinking_accepts_bigmodel_glm(self):
+        config = LLMConfig(
+            provider="openai",
+            base_url="https://open.bigmodel.cn/api/coding/paas/v4",
+            model="glm-5.2",
+            api_key="test-key",
+            disable_thinking=True,
+        )
+
+        assert config.disable_thinking is True
+
 
 class TestLoadConfigFromFile:
     """Tests for load_config_from_file function."""
@@ -296,6 +323,7 @@ class TestGetLLMConfig:
             assert config.context_window_tokens == 1_000_000
             assert config.timeout == 90
             assert config.max_attempts == 3
+            assert config.disable_thinking is False
             assert config.allow_tools is False
             assert config.allowed_tools is None
 
@@ -313,6 +341,7 @@ class TestGetLLMConfig:
             timeout = 45
             max_attempts = 5
             proxy = "http://proxy:8080"
+            disable_thinking = False
             allow_tools = True
             allowed_tools: ClassVar = ["read_file", "get_commit"]
 
@@ -330,6 +359,7 @@ class TestGetLLMConfig:
             assert config.timeout == 45
             assert config.max_attempts == 5
             assert config.proxy == "http://proxy:8080"
+            assert config.disable_thinking is False
             assert config.allow_tools is True
             assert config.allowed_tools == ["read_file", "get_commit"]
 
@@ -358,6 +388,7 @@ class TestGetLLMConfig:
             "COMMITY_DEBUG": "true",
             "COMMITY_TIMEOUT": "50",
             "COMMITY_MAX_ATTEMPTS": "4",
+            "COMMITY_DISABLE_THINKING": "false",
             "COMMITY_ALLOW_TOOLS": "true",
             "COMMITY_ALLOWED_TOOLS": "read_file, get_staged_diff",
         }
@@ -376,6 +407,7 @@ class TestGetLLMConfig:
             assert config.debug is True
             assert config.timeout == 50
             assert config.max_attempts == 4
+            assert config.disable_thinking is False
             assert config.allow_tools is True
             assert config.allowed_tools == ["read_file", "get_staged_diff"]
 

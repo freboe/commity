@@ -114,6 +114,16 @@ export COMMITY_ALLOW_TOOLS=true
 export COMMITY_ALLOWED_TOOLS=get_staged_diff,read_file
 ```
 
+通过智谱 OpenAI 兼容接口使用 GLM-4.5 及以上模型时，可以为短文本结构化任务关闭思考：
+
+```Bash
+commity --disable-thinking
+# 也可设置 COMMITY_DISABLE_THINKING=true / "DISABLE_THINKING": true。
+```
+
+不同 LLM API 的思考控制参数并不通用，因此其他 provider 或模型使用此选项时，
+Commity 会直接拒绝配置。
+
 #### OpenAI
 
 ```Bash

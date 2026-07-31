@@ -115,6 +115,17 @@ export COMMITY_ALLOW_TOOLS=true
 export COMMITY_ALLOWED_TOOLS=get_staged_diff,read_file
 ```
 
+For GLM-4.5+ models through BigModel's OpenAI-compatible API, thinking can be
+disabled for short structured tasks:
+
+```Bash
+commity --disable-thinking
+# Or set COMMITY_DISABLE_THINKING=true / "DISABLE_THINKING": true.
+```
+
+Commity rejects this option for other providers and models because thinking
+controls are not portable across LLM APIs.
+
 #### OpenAI
 
 ```Bash

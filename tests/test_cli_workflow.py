@@ -23,6 +23,8 @@ def test_subject_limit_defaults_to_60_and_accepts_override():
     assert parser.parse_args([]).max_subject_chars == 60
     assert parser.parse_args(["--max_subject_chars", "72"]).max_subject_chars == 72
     assert parser.parse_args(["-y"]).yes is True
+    assert parser.parse_args(["--disable-thinking"]).disable_thinking is True
+    assert parser.parse_args(["--disable_thinking"]).disable_thinking is True
 
 
 def test_yes_commits_and_pushes_without_prompts(mocker):

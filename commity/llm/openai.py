@@ -89,6 +89,8 @@ class OpenAIClient(BaseLLMClient):
             "temperature": self.config.temperature,
             "max_tokens": self.config.max_tokens,
         }
+        if self.config.disable_thinking:
+            payload["thinking"] = {"type": "disabled"}
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"

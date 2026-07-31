@@ -35,6 +35,29 @@ class TestOpenAIClient:
         result = client.generate("test prompt")
         assert result == "test commit message"
 
+        payload = mock_make_request.call_args.args[1]
+        assert "thinking" not in payload
+
+    @patch("commity.llm.openai.OpenAIClient._make_request")
+    def test_generate_disables_thinking_for_supported_glm(self, mock_make_request):
+        config = LLMConfig(
+            provider="openai",
+            base_url="https://open.bigmodel.cn/api/coding/paas/v4",
+            model="glm-5.2",
+            api_key="test-key",
+            disable_thinking=True,
+        )
+        client = OpenAIClient(config)
+        response = Mock()
+        response.json.return_value = {"choices": [{"message": {"content": "test commit message"}}]}
+        mock_make_request.return_value = response
+
+        result = client.generate("test prompt")
+
+        assert result == "test commit message"
+        payload = mock_make_request.call_args.args[1]
+        assert payload["thinking"] == {"type": "disabled"}
+
     @patch("commity.llm.openai.OpenAIClient._make_request")
     def test_generate_with_repository_tool(self, mock_make_request):
         config = LLMConfig(

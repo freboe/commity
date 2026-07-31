@@ -1,6 +1,7 @@
 import json
 import os
 from typing import Any, cast
+from urllib.parse import urlparse
 
 import jsonc
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -9,6 +10,17 @@ from commity.llm import LLM_CLIENTS, BaseLLMClient
 from commity.repository_tools import REPOSITORY_TOOL_NAMES
 
 PROVIDERS_REQUIRING_API_KEY = {"gemini", "nvidia", "openai", "openrouter"}
+THINKING_CAPABLE_GLM_PREFIXES = ("glm-4.5", "glm-4.6", "glm-4.7", "glm-5")
+
+
+def supports_disable_thinking(provider: str, base_url: str, model: str) -> bool:
+    """Return whether Commity knows how to disable thinking for this endpoint."""
+    hostname = urlparse(base_url).hostname
+    return (
+        provider == "openai"
+        and hostname == "open.bigmodel.cn"
+        and model.lower().startswith(THINKING_CAPABLE_GLM_PREFIXES)
+    )
 
 
 def infer_context_window_tokens(model: str) -> int:
@@ -72,6 +84,10 @@ class LLMConfig(BaseModel):
     max_attempts: int = Field(default=3, gt=0, description="Maximum LLM request attempts")
     proxy: str | None = Field(default=None, description="Proxy URL")
     debug: bool = Field(default=False, description="Enable debug mode")
+    disable_thinking: bool = Field(
+        default=False,
+        description="Disable thinking for supported BigModel GLM models",
+    )
     allow_tools: bool = Field(default=False, description="Allow model repository tool use")
     allowed_tools: list[str] | None = Field(
         default=None,
@@ -95,6 +111,13 @@ class LLMConfig(BaseModel):
             raise ValueError(f"API key must be specified for provider '{self.provider}'")
         if self.max_tokens >= self.context_window_tokens:
             raise ValueError("max_tokens must be smaller than context_window_tokens")
+        if self.disable_thinking and not supports_disable_thinking(
+            self.provider, self.base_url, self.model
+        ):
+            raise ValueError(
+                "disable_thinking is only supported for GLM-4.5+ models through "
+                "the BigModel OpenAI-compatible API"
+            )
         return self
 
     model_config = {"frozen": False, "validate_assignment": True}
@@ -159,6 +182,13 @@ def get_llm_config(args: Any) -> LLMConfig:
     max_attempts = _resolve_config("max_attempts", args, file_config, 3, int)
     proxy = _resolve_config("proxy", args, file_config, None)
     debug = _resolve_config("debug", args, file_config, default=False, type_cast=_parse_bool)
+    disable_thinking = _resolve_config(
+        "disable_thinking",
+        args,
+        file_config,
+        default=False,
+        type_cast=_parse_bool,
+    )
     allow_tools = _resolve_config(
         "allow_tools", args, file_config, default=False, type_cast=_parse_bool
     )
@@ -179,6 +209,7 @@ def get_llm_config(args: Any) -> LLMConfig:
         max_attempts=max_attempts,
         proxy=proxy,
         debug=debug,
+        disable_thinking=disable_thinking,
         allow_tools=allow_tools,
         allowed_tools=allowed_tools,
     )
