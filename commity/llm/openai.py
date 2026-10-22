@@ -2,23 +2,20 @@
 
 import json
 
-from commity.llm.base import BaseLLMClient, LLMGenerationError
+from commity.llm.base import LLMGenerationError
+from commity.llm.chat_completions import ChatCompletionsClient
 from commity.repository_tools import ReadOnlyRepositoryTools
 from commity.utils.token_counter import (
     TOKEN_SAFETY_MARGIN,
     count_tokens,
-    truncate_to_token_limit,
 )
 
 
-class OpenAIClient(BaseLLMClient):
+class OpenAIClient(ChatCompletionsClient):
     """Client for OpenAI LLM provider."""
 
     default_base_url = "https://api.openai.com/v1"
     default_model = "gpt-3.5-turbo"
-
-    def generate(self, prompt: str) -> str | None:
-        return self._generate([{"role": "user", "content": prompt}])
 
     def generate_with_tools(
         self, prompt: str, repository_tools: ReadOnlyRepositoryTools
@@ -44,16 +41,8 @@ class OpenAIClient(BaseLLMClient):
                     "tool_call_id": tool_call.get("id", ""),
                     "content": "",
                 }
-                available_tokens = self._remaining_input_tokens(
-                    [*messages, tool_message],
-                    repository_tools.definitions,
-                )
-                tool_message["content"] = truncate_to_token_limit(
-                    result,
-                    available_tokens,
-                    self.config.model,
-                    self.config.provider,
-                    suffix="\n[tool output truncated]",
+                tool_message["content"] = self._truncate_tool_result(
+                    result, messages, tool_message, repository_tools.definitions
                 )
                 messages.append(tool_message)
 
@@ -65,13 +54,6 @@ class OpenAIClient(BaseLLMClient):
         )
         return self._generate(messages)
 
-    def _generate(self, messages: list[dict]) -> str | None:
-        try:
-            return self._request_message(messages).get("content")
-        except Exception as e:
-            self._handle_llm_error(e)
-            return None
-
     def _request_message(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
         if self._remaining_input_tokens(messages, tools) < 0:
             raise LLMGenerationError(
@@ -79,24 +61,40 @@ class OpenAIClient(BaseLLMClient):
                 status_code=400,
                 details="context window token budget exhausted",
             )
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.config.api_key}",
-        }
-        payload = {
-            "model": self.config.model,
-            "messages": messages,
-            "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
-        }
+        return super()._request_message(messages, tools)
+
+    def _request_payload(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
+        payload = super()._request_payload(messages, tools)
         if self.config.disable_thinking:
             payload["thinking"] = {"type": "disabled"}
-        if tools:
-            payload["tools"] = tools
-            payload["tool_choice"] = "auto"
-        url = f"{self.config.base_url}/chat/completions"
-        response = self._make_request(url, payload, headers)
-        return response.json()["choices"][0]["message"]
+        return payload
+
+    def _truncate_tool_result(
+        self,
+        result: str,
+        messages: list[dict],
+        tool_message: dict,
+        tools: list[dict],
+    ) -> str:
+        """Fit tool output using the serialized request, including JSON escaping."""
+
+        def fits(content: str) -> bool:
+            candidate = {**tool_message, "content": content}
+            return self._remaining_input_tokens([*messages, candidate], tools) >= 0
+
+        if fits(result):
+            return result
+        suffix = "\n[tool output truncated]"
+        if not fits(suffix):
+            suffix = ""
+        low, high = 0, len(result)
+        while low < high:
+            middle = (low + high + 1) // 2
+            if fits(result[:middle] + suffix):
+                low = middle
+            else:
+                high = middle - 1
+        return result[:low] + suffix
 
     def _remaining_input_tokens(
         self,

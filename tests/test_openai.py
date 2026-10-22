@@ -3,8 +3,11 @@
 import json
 from unittest.mock import Mock, patch
 
+import pytest
+
 from commity.config import LLMConfig
 from commity.llm import OpenAIClient
+from commity.utils.token_counter import TOKEN_SAFETY_MARGIN, count_tokens
 
 
 class TestOpenAIClient:
@@ -58,12 +61,14 @@ class TestOpenAIClient:
         payload = mock_make_request.call_args.args[1]
         assert payload["thinking"] == {"type": "disabled"}
 
+    @pytest.mark.parametrize("disable_thinking", [False, True])
     @patch("commity.llm.openai.OpenAIClient._make_request")
-    def test_generate_with_repository_tool(self, mock_make_request):
+    def test_generate_with_repository_tool(self, mock_make_request, disable_thinking):
         config = LLMConfig(
             provider="openai",
-            base_url="https://api.openai.com/v1",
-            model="gpt-3.5-turbo",
+            base_url="https://open.bigmodel.cn/api/coding/paas/v4",
+            model="glm-5.2",
+            disable_thinking=disable_thinking,
             api_key="test-key",
         )
         client = OpenAIClient(config)
@@ -110,6 +115,16 @@ class TestOpenAIClient:
             "content": "1: relevant source",
         }
 
+        for call in mock_make_request.call_args_list:
+            payload = call.args[1]
+            if disable_thinking:
+                assert payload["thinking"] == {"type": "disabled"}
+            else:
+                assert "thinking" not in payload
+        first_payload = mock_make_request.call_args_list[0].args[1]
+        assert first_payload["tools"] == repository_tools.definitions
+        assert first_payload["tool_choice"] == "auto"
+
     @patch("commity.llm.openai.OpenAIClient._make_request")
     def test_generate_with_tools_returns_without_calling_tool(self, mock_make_request):
         config = LLMConfig(
@@ -131,8 +146,9 @@ class TestOpenAIClient:
         assert result == "direct result"
         repository_tools.execute.assert_not_called()
 
+    @pytest.mark.parametrize("tool_result", ["x" * 10_000, '"path": "C:\\source"\n' * 1_000])
     @patch("commity.llm.openai.OpenAIClient._make_request")
-    def test_tool_result_is_truncated_to_remaining_context(self, mock_make_request):
+    def test_tool_result_is_truncated_to_remaining_context(self, mock_make_request, tool_result):
         config = LLMConfig(
             provider="openai",
             base_url="https://api.openai.com/v1",
@@ -145,7 +161,7 @@ class TestOpenAIClient:
         repository_tools = Mock()
         repository_tools.max_calls = 5
         repository_tools.definitions = [{"type": "function", "function": {"name": "read_file"}}]
-        repository_tools.execute.return_value = "x" * 10_000
+        repository_tools.execute.return_value = tool_result
 
         tool_response = Mock()
         tool_response.json.return_value = {
@@ -181,3 +197,13 @@ class TestOpenAIClient:
         tool_content = second_payload["messages"][-1]["content"]
         assert len(tool_content) < 10_000
         assert tool_content.endswith("[tool output truncated]")
+
+        serialized = json.dumps(
+            {"messages": second_payload["messages"], "tools": second_payload["tools"]},
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        assert count_tokens(serialized, config.model, config.provider) <= (
+            config.context_window_tokens - config.max_tokens - TOKEN_SAFETY_MARGIN
+        )
+        assert mock_make_request.call_count == 2

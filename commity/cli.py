@@ -29,28 +29,13 @@ from commity.core import (
     get_repository_context,
 )
 from commity.llm import BaseLLMClient, LLMGenerationError, SensitiveDataError, llm_client_factory
+from commity.prompt_budget import prepare_diff
 from commity.repository_tools import ReadOnlyRepositoryTools
 from commity.utils.prompt_organizer import summary_and_tokens_checker
 from commity.utils.spinner import spinner
-from commity.utils.token_counter import TOKEN_SAFETY_MARGIN, count_tokens
+from commity.utils.token_counter import count_tokens
 
-MAX_TOOL_TOKEN_RESERVE = 8_192
 MAX_SUBJECT_REWRITE_ATTEMPTS = 2
-
-
-def _calculate_diff_token_budget(
-    context_window_tokens: int,
-    max_output_tokens: int,
-    prompt_tokens: int,
-    safety_margin: int = TOKEN_SAFETY_MARGIN,
-) -> int:
-    """Reserve model output separately from the prompt input budget."""
-    budget = context_window_tokens - max_output_tokens - prompt_tokens - safety_margin
-    if budget <= 0:
-        raise ValueError(
-            "Model context window cannot fit the base prompt, output reserve, and safety margin"
-        )
-    return budget
 
 
 def _is_context_overflow(error: LLMGenerationError) -> bool:
@@ -325,58 +310,20 @@ def _compress_diff(
         max_subject_chars=args.max_subject_chars,
         repository_context=repository_context,
     )
-    system_prompt_tokens = count_tokens(base_prompt, config.model, config.provider)
-    tool_schema_tokens = 0
-    tool_result_reserve = 0
-    if repository_tools is not None:
-        serialized_tools = json.dumps(
-            repository_tools.definitions,
-            ensure_ascii=False,
-            separators=(",", ":"),
-        )
-        tool_schema_tokens = count_tokens(serialized_tools, config.model, config.provider)
-        available_for_content = _calculate_diff_token_budget(
-            config.context_window_tokens,
-            config.max_tokens,
-            system_prompt_tokens + tool_schema_tokens,
-        )
-        tool_result_reserve = min(MAX_TOOL_TOKEN_RESERVE, available_for_content // 4)
-
-    diff_token_budget = _calculate_diff_token_budget(
-        config.context_window_tokens,
-        config.max_tokens,
-        system_prompt_tokens + tool_schema_tokens + tool_result_reserve,
-    )
-    original_diff_tokens = count_tokens(original_diff, config.model, config.provider)
-    diff = summary_and_tokens_checker(
+    prepared = prepare_diff(
         original_diff,
-        max_output_tokens=diff_token_budget,
-        model_name=config.model,
-        provider=config.provider,
+        base_prompt,
+        config,
+        repository_context=repository_context,
+        tool_definitions=repository_tools.definitions if repository_tools is not None else None,
     )
-    final_diff_tokens = count_tokens(diff, config.model, config.provider)
-
     if config.debug:
         diagnostics = {
-            "provider": config.provider,
-            "model": config.model,
-            "context_window_tokens": config.context_window_tokens,
-            "max_output_tokens": config.max_tokens,
-            "repository_context_tokens": count_tokens(
-                repository_context, config.model, config.provider
-            ),
-            "prompt_without_diff_tokens": system_prompt_tokens,
-            "tool_schema_tokens": tool_schema_tokens,
-            "tool_result_reserve": tool_result_reserve,
-            "diff_budget_tokens": diff_token_budget,
-            "original_diff_tokens": original_diff_tokens,
-            "final_diff_tokens": final_diff_tokens,
-            "diff_compressed": diff != original_diff,
+            **prepared.diagnostics,
             "change_groups": [group.name for group in change_groups],
         }
         print(Panel(str(diagnostics), title="Debug diagnostics", border_style="blue"))
-
-    return diff
+    return prepared.diff
 
 
 def _generate_raw_message(
