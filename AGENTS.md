@@ -1,28 +1,36 @@
 # Repository Guidelines
 
-## Project Structure
+## 项目结构
 
-Commity is a Python 3.12+ CLI that generates commit messages from staged Git changes. `commity/cli.py` is the entry point. `commity/core.py` handles Git diffs and prompt generation, `commity/config.py` resolves settings, and `commity/llm/` contains provider clients and their factory. Shared helpers live in `commity/utils/`. Unit tests live in `tests/`, and integration and end-to-end tests live in `tests/integration/`. GitHub Actions workflows live in `.github/workflows/`.
+Commity 使用 Python 3.12+，根据 Git 暂存区的改动生成提交信息。
 
-## Build, Test, and Development Commands
+- `commity/cli.py` 是命令行入口，`commity/core.py` 读取 Git 差异并生成提示词，`commity/config.py` 解析配置。
+- `commity/llm/` 存放模型服务的客户端及工厂，`commity/utils/` 存放通用工具。
+- `tests/` 存放单元测试，`tests/integration/` 存放集成和端到端测试，`.github/workflows/` 存放 CI 配置。
 
-- `uv sync --group dev` installs the project and development dependencies.
-- `uv run commity --help` checks the local CLI entry point. Stage changes in a test Git repository before trying message generation.
-- `make test` runs pytest. `make build` cleans and builds distributions in `dist/` with Hatch.
-- `make format` formats Python files. `make check` checks lint and formatting with Ruff, and `make typecheck` runs mypy.
+## 常用开发命令
 
-## Coding Style and Naming
+- `uv sync --group dev` 安装项目和开发依赖。
+- `uv run commity --help` 查看本地 CLI 参数。试跑生成流程时，先在测试仓库中用 `git add` 暂存改动。
+- `make test` 运行 pytest。`make build` 用 Hatch 清理旧产物并构建到 `dist/`。
+- `make format` 格式化代码，`make check` 用 Ruff 检查代码和格式，`make typecheck` 用 mypy 检查类型。
 
-Use four-space indentation, double quotes, and Ruff’s 100-character formatting width. Use `snake_case` for modules, functions, and variables, and `PascalCase` for classes. Keep provider-specific behavior in `commity/llm/` and reuse shared client logic.
+## 代码风格与命名
 
-## Testing
+用 4 个空格缩进，字符串用双引号，Ruff 格式化行宽为 100 字符。模块、函数和变量用 `snake_case`，类用 `PascalCase`。模型服务特有的逻辑放在 `commity/llm/`，优先复用客户端的共用逻辑。
 
-Use pytest and name test files and functions `test_*`. Reuse fixtures from `tests/conftest.py` and mock provider requests in unit tests. Run `uv run pytest --ignore=tests/integration` for the unit suite or `uv run pytest -m integration` for integration tests. Integration tests use Git or a local Ollama instance, depending on the test. Pytest reports branch coverage in the terminal and `htmlcov/`. Cover changed behavior with focused regression tests.
+## 测试
 
-## Commits and Pull Requests
+测试文件用 `test_*.py`，测试函数用 `test_*`。复用 `tests/conftest.py` 的 fixture，单元测试中模拟模型服务请求。行为变更应有针对性的回归测试。
 
-Follow the Conventional Commits style used in recent history, such as `feat(config): add provider setting` or `fix(cli): handle empty diffs`. Keep subjects short and use an imperative verb. In PRs, summarize the behavior change, list checks run, and link related issues when applicable. Include sample terminal output for visible CLI changes.
+- `uv run pytest --ignore=tests/integration` 只跑单元测试。
+- `uv run pytest -m integration` 跑集成测试。按用例准备 Git 或本地 Ollama。
+- 分支覆盖率报告可在终端和 `htmlcov/` 查看。
 
-## Code Discovery
+## 提交与拉取请求
 
-Prefer codebase-memory MCP tools for locating symbols and tracing callers. If `.codegraph/` exists, use CodeGraph before falling back to text search for code discovery.
+沿用近期提交的 Conventional Commits 格式，例如 `feat(config): add provider setting` 或 `fix(cli): handle empty diffs`。标题简短，以动词开头。提交 PR 时，说明行为改动，列出已运行的检查，并关联相关 Issue。CLI 输出有变化时，附上终端输出示例。
+
+## 查找代码
+
+优先用 codebase-memory MCP 的 `search_graph` 定位符号、用 `trace_path` 追踪调用。如果仓库根目录有 `.codegraph/`，在回退到文本搜索前先查 CodeGraph。
