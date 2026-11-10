@@ -452,3 +452,13 @@ class TestGetLLMConfig:
 )
 def test_infer_context_window_tokens(model, expected):
     assert infer_context_window_tokens(model) == expected
+
+
+def test_load_config_with_non_object_json(tmp_path, capsys):
+    """A valid-JSON config file that is not an object is ignored with a warning."""
+    config_file = tmp_path / "config.json"
+    config_file.write_text("[1, 2]")
+
+    with patch("commity.config.os.path.expanduser", return_value=str(config_file)):
+        assert load_config_from_file() == {}
+    assert "Expected a JSON object" in capsys.readouterr().out

@@ -59,10 +59,14 @@ def load_config_from_file() -> dict[str, Any]:
     if config_path:
         with open(config_path) as f:
             try:
-                return cast("dict[str, Any]", jsonc.load(f))
+                data = jsonc.load(f)
             except json.JSONDecodeError:
                 print(f"Warning: Could not decode JSON from {config_path}")
                 return {}
+            if not isinstance(data, dict):
+                print(f"Warning: Expected a JSON object in {config_path}")
+                return {}
+            return cast("dict[str, Any]", data)
     return {}
 
 
