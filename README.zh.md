@@ -36,13 +36,35 @@ uv tool install commity
 
 `commity` 支持通过三种方式进行配置，优先级从高到低依次为：**命令行参数 > 环境变量 > 配置文件**。
 
-支持的模型提供商有：`Gemini` (默认)、`Ollama`、`OpenAI`、`OpenRouter`、`NVIDIA`。
-> 使用 Gemini、OpenAI、OpenRouter、NVIDIA 时必须提供 API Key，Commity 会在请求前校验，缺失时立即终止以便快速发现问题。
+支持 Gemini（默认）、Ollama、OpenAI、OpenRouter、NVIDIA，以及下表中的服务。除 Ollama 外均需配置 API Key。
 
 模型仓库工具默认关闭。将 `ALLOW_TOOLS` 设为 `true` 后，支持工具调用的 provider
 可以读取暂存变更、提交历史和 tracked 文件。未配置 `ALLOWED_TOOLS` 时允许使用全部
 内置只读工具。有效名称为 `get_staged_summary`、`get_staged_diff`、
 `list_recent_commits`、`get_commit` 和 `read_file`。
+
+| Provider | Aliases | Default model | Default base URL |
+| --- | --- | --- | --- |
+| `deepseek` | — | `deepseek-flash` | `https://api.deepseek.com` |
+| `qwen` | `dashscope` | `qwen-plus` | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| `kimi` | `moonshot` | `kimi-k3.1-pro` | `https://api.moonshot.cn/v1` |
+| `glm` | `bigmodel` | `glm-4.7` | `https://open.bigmodel.cn/api/paas/v4` |
+| `anthropic` | `claude` | `claude-sonnet-4-5` | `https://api.anthropic.com/v1` |
+
+这些 provider 均支持 `--allow_tools` 仓库工具调用。使用 `--model` 和 `--base_url` 覆盖预设；百炼地域或工作空间不同可能需要调整地址，Coding Plan 密钥需要对应的专用地址。
+
+Qwen 使用非思考模式；DeepSeek Flash/V4 默认关闭思考。Kimi K3 使用低推理强度并省略固定的 temperature 参数。Kimi 和 GLM 默认输出预算为 8192 token（包含思考开销），可用 `--max_tokens` 覆盖；其他 provider 保持 512。GLM 可用 `--disable_thinking` 关闭思考。Claude 使用原生 Messages API（2023-06-01 版本），不需要 OpenRouter。
+
+```bash
+export COMMITY_API_KEY="<your-provider-api-key>"
+commity --provider deepseek
+commity --provider qwen
+commity --provider kimi
+commity --provider glm --disable_thinking
+commity --provider anthropic
+```
+
+[DeepSeek](https://api-docs.deepseek.com/), [Qwen](https://help.aliyun.com/en/model-studio/compatibility-of-openai-with-dashscope), [Kimi](https://platform.kimi.com/docs/guide/kimi-k3-1-pro-quickstart), [Claude](https://platform.claude.com/docs/en/api/messages/create).
 
 ### ✨ 方法一：运行命令时指定模型参数
 

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from commity.llm import LLM_CLIENTS, BaseLLMClient
 from commity.repository_tools import REPOSITORY_TOOL_NAMES
 
-PROVIDERS_REQUIRING_API_KEY = {"gemini", "nvidia", "openai", "openrouter"}
+PROVIDERS_REQUIRING_API_KEY = set(LLM_CLIENTS) - {"ollama"}
 THINKING_CAPABLE_GLM_PREFIXES = ("glm-4.5", "glm-4.6", "glm-4.7", "glm-5")
 
 
@@ -17,7 +17,7 @@ def supports_disable_thinking(provider: str, base_url: str, model: str) -> bool:
     """Return whether Commity knows how to disable thinking for this endpoint."""
     hostname = urlparse(base_url).hostname
     return (
-        provider == "openai"
+        provider in {"openai", "glm", "bigmodel"}
         and hostname == "open.bigmodel.cn"
         and model.lower().startswith(THINKING_CAPABLE_GLM_PREFIXES)
     )
@@ -170,7 +170,8 @@ def get_llm_config(args: Any) -> LLMConfig:
     model = _resolve_config("model", args, file_config, default_model)
     api_key = _resolve_config("api_key", args, file_config, None)
     temperature = _resolve_config("temperature", args, file_config, 0.2, float)
-    max_tokens = _resolve_config("max_tokens", args, file_config, 512, int)
+    default_max_tokens = 8192 if provider in {"kimi", "moonshot", "glm", "bigmodel"} else 512
+    max_tokens = _resolve_config("max_tokens", args, file_config, default_max_tokens, int)
     context_window_tokens = _resolve_config(
         "context_window_tokens",
         args,

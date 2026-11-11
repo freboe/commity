@@ -37,13 +37,35 @@ uv tool install commity
 `commity` supports three configuration methods, with the following priority: **Command-line Arguments > Environment
 Variables > Configuration File**.
 
-Supported model providers are: `Gemini` (default), `Ollama`, `OpenAI`, `OpenRouter`, `NVIDIA`.
-> Gemini, OpenAI, OpenRouter, and NVIDIA always require an API key. Commity aborts early if those keys are missing so you get fast feedback before hitting the network.
+Supported providers include Gemini (default), Ollama, OpenAI, OpenRouter, NVIDIA, and the services below. All providers except Ollama require an API key.
 
 Model repository tools are disabled by default. Set `ALLOW_TOOLS` to `true` to let a
 tool-capable provider inspect staged changes, commit history, and tracked files. If
 `ALLOWED_TOOLS` is omitted, every built-in read-only tool is available. Valid names are
 `get_staged_summary`, `get_staged_diff`, `list_recent_commits`, `get_commit`, and `read_file`.
+
+| Provider | Aliases | Default model | Default base URL |
+| --- | --- | --- | --- |
+| `deepseek` | — | `deepseek-flash` | `https://api.deepseek.com` |
+| `qwen` | `dashscope` | `qwen-plus` | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| `kimi` | `moonshot` | `kimi-k3.1-pro` | `https://api.moonshot.cn/v1` |
+| `glm` | `bigmodel` | `glm-4.7` | `https://open.bigmodel.cn/api/paas/v4` |
+| `anthropic` | `claude` | `claude-sonnet-4-5` | `https://api.anthropic.com/v1` |
+
+These providers support repository tools via `--allow_tools`. Override presets with `--model` and `--base_url`; DashScope regions/workspaces may need a different URL, and Coding Plan keys require their dedicated endpoint.
+
+Qwen uses non-thinking mode; DeepSeek Flash/V4 disable thinking. Kimi K3 uses low reasoning effort and omits the fixed temperature parameter. Kimi and GLM default to an 8192-token output budget (including reasoning), overridable with `--max_tokens`; other providers retain 512. GLM supports `--disable_thinking`. Claude uses the native Messages API (version 2023-06-01) without OpenRouter.
+
+```bash
+export COMMITY_API_KEY="<your-provider-api-key>"
+commity --provider deepseek
+commity --provider qwen
+commity --provider kimi
+commity --provider glm --disable_thinking
+commity --provider anthropic
+```
+
+[DeepSeek](https://api-docs.deepseek.com/), [Qwen](https://help.aliyun.com/en/model-studio/compatibility-of-openai-with-dashscope), [Kimi](https://platform.kimi.com/docs/guide/kimi-k3-1-pro-quickstart), [Claude](https://platform.claude.com/docs/en/api/messages/create).
 
 ### ✨ Method 1: Specify Model Parameters via Command-line
 

@@ -36,7 +36,7 @@ class ChatCompletionsClient(BaseLLMClient):
 
     def _request_message(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
         response = self._make_request(
-            f"{self.config.base_url}/chat/completions",
+            f"{self.config.base_url.rstrip('/')}/chat/completions",
             self._request_payload(messages, tools),
             self._request_headers(),
         )
