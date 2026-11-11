@@ -204,3 +204,67 @@ class TestSummaryAndTokensChecker:
         assert len(result) > 0
         # The result should be much smaller than input
         assert len(result) < len(huge_diff)
+
+
+def test_replacement_keeps_both_sides_when_deletion_exceeds_limit():
+    from unidiff import PatchSet
+
+    from commity.utils.prompt_organizer import format_file_summary
+
+    removed = "".join(f"-old_{i}\n" for i in range(20))
+    diff = (
+        "diff --git a/src/auth.py b/src/auth.py\n"
+        "--- a/src/auth.py\n+++ b/src/auth.py\n"
+        "@@ -1,20 +1 @@ def authenticate():\n" + removed + "+reject_expired_token()\n"
+    )
+    result = format_file_summary(PatchSet(diff)[0])
+    assert "- old_0" in result
+    assert "+ reject_expired_token()" in result
+    assert "changed lines omitted" in result
+    assert "authenticate()" in result
+    assert result.index("old_0") < result.index("reject_expired_token")
+
+
+def test_summary_includes_last_hunk_and_nearby_context():
+    from unidiff import PatchSet
+
+    from commity.utils.prompt_organizer import format_file_summary
+
+    diff = "diff --git a/src/main.py b/src/main.py\n--- a/src/main.py\n+++ b/src/main.py\n"
+    for i in range(8):
+        start = i * 10 + 1
+        diff += f"@@ -{start},2 +{start},2 @@\n def case_{i}():\n-old_{i}\n+new_{i}\n"
+    result = format_file_summary(PatchSet(diff)[0], max_hunks=3)
+    assert "context: def case_0():" in result
+    assert "+ new_7" in result
+    assert "5 more hunks omitted" in result
+
+
+def test_compression_reduces_large_source_summary_before_skipping_it():
+    # The old compressor discarded this source file because the full summary
+    # exceeded the budget, leaving only metadata and unrelated documentation.
+    changes = "".join(f"-old_value_{i} = {i}\n+new_value_{i} = {i}\n" for i in range(50))
+    diff = (
+        "diff --git a/src/main.py b/src/main.py\n--- a/src/main.py\n+++ b/src/main.py\n"
+        "@@ -1,50 +1,50 @@ def configure():\n" + changes
+    )
+    result = summary_and_tokens_checker(diff, 200, "gpt-4", "openai")
+    assert "old_value_0" in result
+    assert "new_value_0" in result
+    assert "omitted" in result
+    assert count_tokens(result, "gpt-4", "openai") <= 200
+
+
+def test_rename_without_hunks_preserves_operation():
+    diff = (
+        "diff --git a/old.py b/new.py\nsimilarity index 100%\n"
+        "rename from old.py\nrename to new.py\n"
+    )
+    result = compress_with_structure(diff, 500, "gpt-4", "openai")
+    assert "renamed from a/old.py to b/new.py" in result
+
+
+def test_frontend_source_has_priority_over_large_lockfile():
+    assert calculate_file_importance("src/Login.tsx", 1, 1) > calculate_file_importance(
+        "package-lock.json", 10000, 10000
+    )

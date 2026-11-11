@@ -44,6 +44,8 @@ tool-capable provider inspect staged changes, commit history, and tracked files.
 `ALLOWED_TOOLS` is omitted, every built-in read-only tool is available. Valid names are
 `get_staged_summary`, `get_staged_diff`, `list_recent_commits`, `get_commit`, and `read_file`.
 
+Generation uses the staged diff as evidence, comparing removed and added code and using changed test assertions to clarify edge cases. Unchanged context is not treated as a new feature, and changed tests do not imply a passing test run. Small diffs remain intact. Over-budget diffs prioritize source code, before/after samples, function context, and distributed hunks with explicit omission markers. Compressed content is partial evidence. If intent is unclear from the diff, supply guidance when regenerating or enable repository tools for additional inspection.
+
 | Provider | Aliases | Default model | Default base URL |
 | --- | --- | --- | --- |
 | `deepseek` | — | `deepseek-flash` | `https://api.deepseek.com` |

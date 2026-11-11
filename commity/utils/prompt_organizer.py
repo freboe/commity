@@ -94,7 +94,24 @@ def calculate_file_importance(file_path: str, added: int, removed: int) -> int:
         or filename.endswith(("_test.py", ".test.js", ".test.ts", ".spec.js", ".spec.ts"))
     ):
         base_score = 10
-    elif normalized.endswith((".py", ".js", ".ts", ".go", ".rs", ".java", ".cpp", ".c")):
+    elif normalized.endswith(
+        (
+            ".py",
+            ".js",
+            ".jsx",
+            ".ts",
+            ".tsx",
+            ".vue",
+            ".svelte",
+            ".go",
+            ".rs",
+            ".java",
+            ".kt",
+            ".swift",
+            ".cpp",
+            ".c",
+        )
+    ):
         base_score = 30
     elif normalized.endswith((".json", ".yaml", ".yml", ".toml", ".ini", ".conf")):
         base_score = 20
@@ -176,18 +193,51 @@ def extract_hunk_context(hunk) -> str:
 
 def extract_ordered_hunk_changes(hunk, max_lines: int = MAX_LINES_PER_HUNK) -> list[str]:
     """Extract changed lines while preserving their original diff order."""
-    changes: list[str] = []
-    for line in hunk:
-        if len(changes) >= max_lines:
-            break
-        if line.is_added:
-            changes.append(f"    + {line.value.rstrip()}")
-        elif line.is_removed:
-            changes.append(f"    - {line.value.rstrip()}")
-    return changes
+    if max_lines <= 0:
+        return []
+    changed = [line for line in hunk if line.is_added or line.is_removed]
+    if len(changed) <= max_lines:
+        selected = set(range(len(changed)))
+    else:
+        # Split the allowance between old and new code. A long deletion must not
+        # hide its replacement, and the original +/- order must remain intact.
+        removed = [i for i, line in enumerate(changed) if line.is_removed]
+        added = [i for i, line in enumerate(changed) if line.is_added]
+        old_budget = min(len(removed), max_lines // 2)
+        new_budget = min(len(added), max_lines - old_budget)
+        old_budget = min(len(removed), max_lines - new_budget)
+        selected = set(removed[:old_budget] + added[:new_budget])
+    result = []
+    omitted = 0
+    for index, line in enumerate(changed):
+        if index not in selected:
+            omitted += 1
+            continue
+        if omitted:
+            result.append(f"    ... {omitted} changed lines omitted")
+            omitted = 0
+        prefix = "+" if line.is_added else "-"
+        result.append(f"    {prefix} {line.value.rstrip()}")
+    if omitted:
+        result.append(f"    ... {omitted} changed lines omitted")
+    return result
 
 
-def format_file_summary(patched_file, max_hunks: int = MAX_HUNKS_PER_FILE) -> str:
+def _file_change_kind(patched_file) -> str:
+    if patched_file.is_added_file:
+        return "added"
+    if patched_file.is_removed_file:
+        return "deleted"
+    if patched_file.is_rename:
+        return f"renamed from {patched_file.source_file} to {patched_file.target_file}"
+    if patched_file.is_binary_file:
+        return "binary changed"
+    return "modified"
+
+
+def format_file_summary(
+    patched_file, max_hunks: int = MAX_HUNKS_PER_FILE, max_lines: int = MAX_LINES_PER_HUNK
+) -> str:
     """格式化单个文件的变更摘要.
 
     输出格式：
@@ -201,6 +251,7 @@ def format_file_summary(patched_file, max_hunks: int = MAX_HUNKS_PER_FILE) -> st
     ----
         patched_file: unidiff 的 PatchedFile 对象
         max_hunks: 最多显示的 hunk 数量
+        max_lines: 每个 hunk 保留的变更行数量
 
     Returns:
     -------
@@ -208,23 +259,34 @@ def format_file_summary(patched_file, max_hunks: int = MAX_HUNKS_PER_FILE) -> st
 
     """
     lines = [
-        f"📄 **{patched_file.path}**",
+        f"📄 **{patched_file.path}** ({_file_change_kind(patched_file)})",
         f"   +{patched_file.added} -{patched_file.removed} lines",
     ]
-
-    for idx, hunk in enumerate(patched_file):
-        if idx >= max_hunks:
-            remaining = len(patched_file) - max_hunks
-            lines.append(f"   ... +{remaining} more hunks")
-            break
-
-        # 添加上下文
+    total_hunks = len(patched_file)
+    # Include the end of the file too: tests and error branches often live there.
+    if total_hunks > max_hunks and max_hunks > 1:
+        indices = sorted({i * (total_hunks - 1) // (max_hunks - 1) for i in range(max_hunks)})
+    else:
+        indices = list(range(min(total_hunks, max_hunks)))
+    for index in indices:
+        hunk = patched_file[index]
+        lines.append(
+            f"   @@ -{hunk.source_start},{hunk.source_length} +{hunk.target_start},{hunk.target_length} @@"
+        )
         context = extract_hunk_context(hunk)
         if context:
             lines.append(context)
-
-        # 提取变更
-        lines.extend(extract_ordered_hunk_changes(hunk))
+        else:
+            # Pure insertions inside a function may have no section header.
+            # Keep one nearby unchanged line as evidence of the enclosing code.
+            nearby = next(
+                (line.value.rstrip() for line in hunk if line.is_context and line.value.strip()), ""
+            )
+            if nearby:
+                lines.append(f"    context: {nearby}")
+        lines.extend(extract_ordered_hunk_changes(hunk, max_lines))
+    if total_hunks > len(indices):
+        lines.append(f"   ... {total_hunks - len(indices)} more hunks omitted")
 
     return "\n".join(lines)
 
@@ -273,10 +335,15 @@ def compress_with_structure(diff_text: str, max_tokens: int, model_name: str, pr
     # 3. First preserve an inventory of every changed file.
     total_files = len(ranked_files)
     inventory = [
-        f"- {file_info.path} (+{file_info.added} -{file_info.removed})"
+        f"- {file_info.path} ({_file_change_kind(files_map[file_info.path])}; +{file_info.added} -{file_info.removed})"
         for file_info in ranked_files[:MAX_FILES_IN_SUMMARY]
     ]
-    result_parts: list[str] = ["Changed files:\n" + "\n".join(inventory)]
+    if total_files > len(inventory):
+        inventory.append(f"... {total_files - len(inventory)} more file paths omitted")
+    result_parts: list[str] = [
+        "Partial staged diff: omitted lines are unknown, not unchanged.\nChanged files:\n"
+        + "\n".join(inventory)
+    ]
     detailed_files = 0
 
     for file_info in ranked_files:
@@ -284,16 +351,15 @@ def compress_with_structure(diff_text: str, max_tokens: int, model_name: str, pr
         if not patched_file:
             continue
 
-        # 生成这个文件的摘要
-        file_summary = format_file_summary(patched_file)
-
-        # 尝试添加，检查是否超出限制
-        test_content = "\n\n".join([*result_parts, file_summary])
-        if count_tokens(test_content, model_name, provider) > max_tokens:
-            continue
-
-        result_parts.append(file_summary)
-        detailed_files += 1
+        # Reduce detail before discarding a high-priority file altogether.
+        for max_hunks, max_lines in ((5, 10), (3, 6), (2, 4), (1, 2)):
+            file_summary = format_file_summary(patched_file, max_hunks, max_lines)
+            test_content = "\n\n".join([*result_parts, file_summary])
+            # Reserve room for the final summary header.
+            if count_tokens(test_content, model_name, provider) + 64 <= max_tokens:
+                result_parts.append(file_summary)
+                detailed_files += 1
+                break
 
     # 4. 生成头部信息
     header_lines = [

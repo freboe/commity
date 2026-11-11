@@ -43,6 +43,8 @@ uv tool install commity
 内置只读工具。有效名称为 `get_staged_summary`、`get_staged_diff`、
 `list_recent_commits`、`get_commit` 和 `read_file`。
 
+生成时以暂存区 diff 为依据，对照删除和新增代码识别行为变化，并用测试断言辅助判断边界条件；不会把未变化的上下文当作新增功能，也不会声称测试已通过。小 diff 保持完整；超出上下文预算时，优先保留源代码、删除/新增对照、函数上下文和分散的 hunk 样本，并标明省略内容。压缩后的内容仅代表部分证据。若目的无法从 diff 看出，可在重新生成时补充说明，或启用仓库工具辅助检查。
+
 | Provider | Aliases | Default model | Default base URL |
 | --- | --- | --- | --- |
 | `deepseek` | — | `deepseek-flash` | `https://api.deepseek.com` |
